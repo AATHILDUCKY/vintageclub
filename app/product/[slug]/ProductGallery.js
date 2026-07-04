@@ -106,11 +106,15 @@ export default function ProductGallery({
               <span className="text-xs font-medium text-ink">{activeColour}</span>
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2.5 sm:gap-3">
             {colours.map((c) => {
               const selected = c === activeColour;
               const soldOut = soldOutColours.includes(c);
               const css = colourCss(c);
+              // Show the actual photo tagged with this colour, so patterns and
+              // shades are clearly viewable — fall back to a colour dot.
+              const imgIdx = imageColours.findIndex((tag) => tag === c);
+              const swatchImg = imgIdx >= 0 ? gallery[imgIdx] : null;
               return (
                 <button
                   key={c}
@@ -118,25 +122,46 @@ export default function ProductGallery({
                   onClick={() => onColour && onColour(c)}
                   aria-pressed={selected}
                   title={soldOut ? `${c} — sold out` : c}
-                  className={`group inline-flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-xs font-medium transition ${
-                    selected
-                      ? "border-ink bg-ink text-paper"
-                      : soldOut
-                      ? "border-line text-ash line-through decoration-2"
-                      : "border-line text-ink hover:border-ink"
-                  }`}
+                  className="group flex w-[72px] flex-col items-center gap-1.5 sm:w-20"
                 >
                   <span
-                    className={`h-5 w-5 flex-none rounded-full border ${
-                      selected ? "border-paper/40" : "border-line"
-                    } ${soldOut ? "opacity-50" : ""}`}
-                    style={
-                      css
-                        ? { backgroundColor: css }
-                        : { backgroundImage: "linear-gradient(135deg,#e5e5e5,#a3a3a3)" }
-                    }
-                  />
-                  {c}
+                    className={`relative block aspect-square w-full overflow-hidden rounded-xl border transition ${
+                      selected
+                        ? "border-ink ring-2 ring-ink"
+                        : "border-line group-hover:border-ash"
+                    } ${soldOut ? "opacity-60" : ""}`}
+                  >
+                    {swatchImg ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={swatchImg}
+                        alt={c}
+                        className={`h-full w-full object-cover ${soldOut ? "grayscale" : ""}`}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span
+                        className="block h-full w-full"
+                        style={
+                          css
+                            ? { backgroundColor: css }
+                            : { backgroundImage: "linear-gradient(135deg,#e5e5e5,#a3a3a3)" }
+                        }
+                      />
+                    )}
+                    {soldOut && (
+                      <span className="absolute inset-x-0 bottom-0 bg-ink/80 py-0.5 text-center text-[8px] font-semibold uppercase tracking-wide text-paper">
+                        Sold
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className={`w-full truncate text-center text-[11px] font-medium leading-tight ${
+                      selected ? "text-ink" : "text-ash"
+                    } ${soldOut ? "line-through" : ""}`}
+                  >
+                    {c}
+                  </span>
                 </button>
               );
             })}
