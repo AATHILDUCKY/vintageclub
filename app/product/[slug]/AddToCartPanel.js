@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useStore, formatMoney } from "@/app/context/StoreProvider";
 import { comboKey, comboKeys, variantPricing, variantPricingSummary } from "@/lib/variants";
+import ColourSwatches from "./ColourSwatches";
 
 export default function AddToCartPanel({ product, colour, setColour }) {
   const { addToCart, showToast, settings } = useStore();
@@ -40,6 +41,12 @@ export default function AddToCartPanel({ product, colour, setColour }) {
     if (colourChosen) return !comboSoldOut(s, colour);
     return product.colours.some((c) => !comboSoldOut(s, c));
   };
+  // Colours whose every size combination is sold out — shown crossed-out in the picker.
+  const sizePool = hasSizes ? product.sizes : [""];
+  const soldOutColours = hasColours
+    ? product.colours.filter((c) => sizePool.every((s) => comboSoldOut(s, c)))
+    : [];
+
   // Whole product sold out: master toggle off, or every combination sold out.
   const soldOut =
     !product.inStock ||
@@ -118,6 +125,17 @@ export default function AddToCartPanel({ product, colour, setColour }) {
         <p className="mt-5 text-sm leading-relaxed text-ash">{product.description}</p>
       )}
 
+      {/* Colour picker (photo boxes + names), shown before Size. Shares this
+          component's `colour` state so the gallery image follows the choice. */}
+      <ColourSwatches
+        colours={product.colours || []}
+        imageColours={product.imageColours || []}
+        images={product.images || []}
+        soldOutColours={soldOutColours}
+        colour={colour}
+        onColour={(c) => { setColour(c); setError(""); }}
+      />
+
       {/* Sizes */}
       {product.sizes?.length > 0 && (
         <div className="mt-6">
@@ -146,14 +164,6 @@ export default function AddToCartPanel({ product, colour, setColour }) {
             })}
           </div>
         </div>
-      )}
-
-      {/* Colour is chosen from the swatches under the gallery (ProductGallery),
-          which share this component's `colour` state via ProductView. */}
-      {hasColours && colourChosen && (
-        <p className="mt-5 text-sm text-ash">
-          Colour: <span className="font-medium text-ink">{colour}</span>
-        </p>
       )}
 
       {/* Live out-of-stock notice for the chosen variant */}
