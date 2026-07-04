@@ -70,7 +70,9 @@ export default function ProductGallery({
         )}
       </div>
 
-      {gallery.length > 1 && (
+      {/* Thumbnail strip — only when there are no colours to pick from, so the
+          gallery isn't shown twice (the COLOUR swatches double as navigation). */}
+      {gallery.length > 1 && !hasColours && (
         <div className="mt-3 grid grid-cols-5 gap-2 sm:gap-3">
           {gallery.map((src, i) => {
             const tagged = imageColours[i] && imageColours[i] === activeColour;
