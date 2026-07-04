@@ -3,7 +3,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useStore, formatMoney } from "@/app/context/StoreProvider";
 import { comboKey, comboKeys, variantPricing, variantPricingSummary } from "@/lib/variants";
-import ColourSwatches from "./ColourSwatches";
 
 export default function AddToCartPanel({ product, colour, setColour }) {
   const { addToCart, showToast, settings } = useStore();
@@ -41,12 +40,11 @@ export default function AddToCartPanel({ product, colour, setColour }) {
     if (colourChosen) return !comboSoldOut(s, colour);
     return product.colours.some((c) => !comboSoldOut(s, c));
   };
-  // Colours whose every size combination is sold out — shown crossed-out in the picker.
-  const sizePool = hasSizes ? product.sizes : [""];
-  const soldOutColours = hasColours
-    ? product.colours.filter((c) => sizePool.every((s) => comboSoldOut(s, c)))
-    : [];
-
+  const colourAvail = (c) => {
+    if (!hasSizes) return !comboSoldOut("", c);
+    if (sizeChosen) return !comboSoldOut(size, c);
+    return product.sizes.some((s) => !comboSoldOut(s, c));
+  };
   // Whole product sold out: master toggle off, or every combination sold out.
   const soldOut =
     !product.inStock ||
@@ -125,17 +123,6 @@ export default function AddToCartPanel({ product, colour, setColour }) {
         <p className="mt-5 text-sm leading-relaxed text-ash">{product.description}</p>
       )}
 
-      {/* Colour picker (photo boxes + names), shown before Size. Shares this
-          component's `colour` state so the gallery image follows the choice. */}
-      <ColourSwatches
-        colours={product.colours || []}
-        imageColours={product.imageColours || []}
-        images={product.images || []}
-        soldOutColours={soldOutColours}
-        colour={colour}
-        onColour={(c) => { setColour(c); setError(""); }}
-      />
-
       {/* Sizes */}
       {product.sizes?.length > 0 && (
         <div className="mt-6">
@@ -159,6 +146,37 @@ export default function AddToCartPanel({ product, colour, setColour }) {
                   }`}
                 >
                   {s}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Colours — chip tags (same style as Size). The photo-box swatches under
+          the gallery share this component's `colour` state, so both stay in sync. */}
+      {product.colours?.length > 0 && (
+        <div className="mt-5">
+          <p className="label">Colour</p>
+          <div className="flex flex-wrap gap-2">
+            {product.colours.map((c) => {
+              const avail = colourAvail(c);
+              return (
+                <button
+                  key={c}
+                  onClick={() => { setColour(c); setError(""); }}
+                  disabled={soldOut}
+                  aria-disabled={!avail}
+                  title={avail ? c : `${c} — out of stock`}
+                  className={`chip ${
+                    !avail
+                      ? "border-line text-ash line-through decoration-2 opacity-60"
+                      : colour === c
+                      ? "border-ink bg-ink text-paper"
+                      : "border-line hover:border-ink"
+                  }`}
+                >
+                  {c}
                 </button>
               );
             })}
