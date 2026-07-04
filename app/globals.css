@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Aptos", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Georgia", "Times New Roman", serif;
+  --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-paper text-ink antialiased;
+  font-family: var(--font-sans);
+}
+
+/* Hide scrollbars on horizontal filter rails but keep scroll */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Editorial marquee ticker */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee 22s linear infinite;
+  will-change: transform;
+}
+.marquee:hover .marquee-track { animation-play-state: paused; }
+
+@keyframes new-drops-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.new-drops-track {
+  animation: new-drops-scroll 28s linear infinite;
+  will-change: transform;
+}
+.new-drops-track:hover { animation-play-state: paused; }
+
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .marquee-track,
+  .new-drops-track { animation: none !important; }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium
+           transition-all duration-200 select-none disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-paper hover:bg-ink/85 active:scale-[0.98];
+  }
+  .btn-outline {
+    @apply btn border border-ink/20 text-ink hover:border-ink hover:bg-ink hover:text-paper active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply btn text-ink hover:bg-smoke;
+  }
+  .input {
+    @apply w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink
+           placeholder:text-ash focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/10 transition;
+  }
+  .label {
+    @apply block text-xs font-medium uppercase tracking-wide text-ash mb-1.5;
+  }
+  .card {
+    @apply rounded-2xl border border-line bg-white;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition;
+  }
+}
