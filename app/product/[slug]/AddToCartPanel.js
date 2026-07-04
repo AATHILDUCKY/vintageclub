@@ -99,7 +99,7 @@ export default function AddToCartPanel({ product, colour, setColour }) {
   return (
     <div className="flex flex-col">
       <span className="text-xs uppercase tracking-wide text-ash">{product.category}</span>
-      <h1 className="mt-1 font-display text-3xl font-bold leading-tight">{product.name}</h1>
+      <h1 className="mt-1 font-sans text-2xl font-bold uppercase leading-tight tracking-tight sm:text-3xl">{product.name}</h1>
       <div className="mt-3">
         <PriceBlock pricing={displayPricing} currency={settings.currency} />
         {selectedPriceOverride ? (
