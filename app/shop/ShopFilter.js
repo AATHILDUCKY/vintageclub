@@ -9,10 +9,16 @@ export default function ShopFilter({ products = [], initialCategory = "All" }) {
   const [q, setQ] = useState("");
   const [category, setCategory] = useState(initialCategory || "All");
 
-  const categories = useMemo(
-    () => ["All", ...Array.from(new Set(products.map((p) => p.category)))],
-    [products]
-  );
+  // "All" is the built-in show-everything tab, so drop any real category equal
+  // to "All" (the default) or blank to avoid a duplicate chip.
+  const categories = useMemo(() => {
+    const rest = new Set(
+      products
+        .map((p) => (p.category || "").trim())
+        .filter((c) => c && c.toLowerCase() !== "all")
+    );
+    return ["All", ...rest];
+  }, [products]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
