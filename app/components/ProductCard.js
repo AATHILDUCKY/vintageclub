@@ -11,7 +11,7 @@ export default function ProductCard({ product }) {
   return (
     <Link
       href={`/product/${product.slug}`}
-      className="group flex flex-col overflow-hidden border border-line bg-white transition hover:-translate-y-0.5 hover:shadow-lg"
+      className="group flex h-full w-full flex-col overflow-hidden border border-line bg-white transition hover:-translate-y-0.5 hover:shadow-lg"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-smoke">
         {/* eslint-disable-next-line @next/next/no-img-element */}

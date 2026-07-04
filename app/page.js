@@ -383,7 +383,7 @@ function NewDrops({ products }) {
               {loop.map((product, i) => (
                 <div
                   key={`${copy}-${product.id}-${i}`}
-                  className="w-[190px] shrink-0 px-1.5 sm:w-[240px] sm:px-2.5 lg:w-[270px]"
+                  className="flex w-[190px] shrink-0 px-1.5 sm:w-[240px] sm:px-2.5 lg:w-[270px]"
                 >
                   <ProductCard product={product} />
                 </div>
