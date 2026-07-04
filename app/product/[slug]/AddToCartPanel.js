@@ -40,12 +40,6 @@ export default function AddToCartPanel({ product, colour, setColour }) {
     if (colourChosen) return !comboSoldOut(s, colour);
     return product.colours.some((c) => !comboSoldOut(s, c));
   };
-  const colourAvail = (c) => {
-    if (!hasSizes) return !comboSoldOut("", c);
-    if (sizeChosen) return !comboSoldOut(size, c);
-    return product.sizes.some((s) => !comboSoldOut(s, c));
-  };
-
   // Whole product sold out: master toggle off, or every combination sold out.
   const soldOut =
     !product.inStock ||
@@ -154,34 +148,12 @@ export default function AddToCartPanel({ product, colour, setColour }) {
         </div>
       )}
 
-      {/* Colours */}
-      {product.colours?.length > 0 && (
-        <div className="mt-5">
-          <p className="label">Colour</p>
-          <div className="flex flex-wrap gap-2">
-            {product.colours.map((c) => {
-              const avail = colourAvail(c);
-              return (
-                <button
-                  key={c}
-                  onClick={() => { setColour(c); setError(""); }}
-                  disabled={soldOut}
-                  aria-disabled={!avail}
-                  title={avail ? c : `${c} — out of stock`}
-                  className={`chip ${
-                    !avail
-                      ? "border-line text-ash line-through decoration-2 opacity-60"
-                      : colour === c
-                      ? "border-ink bg-ink text-paper"
-                      : "border-line hover:border-ink"
-                  }`}
-                >
-                  {c}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {/* Colour is chosen from the swatches under the gallery (ProductGallery),
+          which share this component's `colour` state via ProductView. */}
+      {hasColours && colourChosen && (
+        <p className="mt-5 text-sm text-ash">
+          Colour: <span className="font-medium text-ink">{colour}</span>
+        </p>
       )}
 
       {/* Live out-of-stock notice for the chosen variant */}

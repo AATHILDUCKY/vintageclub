@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ProductCard from "./components/ProductCard";
 import { listProducts, getSetting, getPublicSettings, bestSellers, getHomeContent, listCategoryTags } from "@/lib/models";
+import { publicizeProduct, publicizeHomeContent, publicizeCategoryTag } from "@/lib/img";
 import { siteUrl, abs } from "@/lib/seo";
 
 export const dynamic = "force-dynamic"; // always reflect latest stock
@@ -31,8 +32,8 @@ function siteJsonLd(storeName) {
 export default function HomePage() {
   const settings = getPublicSettings();
   const storeName = settings.storeName || getSetting("store_name", "Vintage Club");
-  const content = getHomeContent();
-  const products = listProducts({ publicOnly: true });
+  const content = publicizeHomeContent(getHomeContent());
+  const products = listProducts({ publicOnly: true }).map(publicizeProduct);
   const featured = products.filter((p) => p.featured);
   const edit = (featured.length ? featured : products).slice(0, 4);
   // New drops: admin-flagged products first; if none are flagged yet, fall back
@@ -42,7 +43,7 @@ export default function HomePage() {
   const newDrops = (flaggedDrops.length ? flaggedDrops : newest).slice(0, 12);
 
   const categoryTiles = buildCategoryTiles({
-    managed: listCategoryTags(),
+    managed: listCategoryTags().map(publicizeCategoryTag),
     products,
     fallbackImage: content.editorial_image || content.hero_image || "/images/editorial.jpg",
   });

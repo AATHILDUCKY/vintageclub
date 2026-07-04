@@ -322,14 +322,14 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
   }
 
   // Colour tags run parallel to images; every image mutation keeps them aligned.
-  // Append one or more uploaded images to the gallery (max 8).
+  // Append one or more uploaded images to the gallery (max 20).
   async function onImageFiles(files) {
     const list = Array.from(files || []);
     if (!list.length) return;
     setError("");
     const current = form.images || [];
-    const room = 8 - current.length;
-    if (room <= 0) { setError("Up to 8 images per product."); return; }
+    const room = 20 - current.length;
+    if (room <= 0) { setError("Up to 20 images per product."); return; }
     const toRead = list.slice(0, room);
     try {
       const compressed = await compressImagesToWebP(toRead, { maxDimension: 1400, maxBytes: 64 * 1024 });
@@ -440,11 +440,11 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
                   onSetColour={(c) => setImageColour(i, c)}
                 />
               ))}
-              {(form.images?.length || 0) < 8 && (
+              {(form.images?.length || 0) < 20 && (
                 <label className="flex aspect-[4/5] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-line text-ash transition hover:border-ink hover:bg-smoke hover:text-ink">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 5v14M5 12h14" /></svg>
                   <span className="text-[11px] font-medium uppercase tracking-wide">Add photo</span>
-                  <span className="text-[10px] text-ash">{form.images?.length || 0}/8 · WebP under 64KB</span>
+                  <span className="text-[10px] text-ash">{form.images?.length || 0}/20 · WebP under 64KB</span>
                   <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => onImageFiles(e.target.files)} />
                 </label>
               )}

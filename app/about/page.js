@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getHomeContent, getPublicSettings } from "@/lib/models";
+import { publicizeHomeContent } from "@/lib/img";
 import { abs, ogImage } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 const SHELL = "mx-auto w-[90%] max-w-[1600px]";
 
 export function generateMetadata() {
-  const content = getHomeContent();
+  const content = publicizeHomeContent(getHomeContent());
   const title = "About";
   const description = content.about_intro || "About Vintage Club.";
   return {
@@ -26,7 +27,7 @@ export function generateMetadata() {
 }
 
 export default function AboutPage() {
-  const content = getHomeContent();
+  const content = publicizeHomeContent(getHomeContent());
   const settings = getPublicSettings();
   const values = [
     { title: content.about_value1_title, text: content.about_value1_text },

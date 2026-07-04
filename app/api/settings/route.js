@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { route, ok, fail } from "@/lib/api";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, currentUser } from "@/lib/auth";
+import { publicizeSettings } from "@/lib/img";
 import {
   getPublicSettings,
   setSetting,
@@ -31,7 +32,14 @@ export const dynamic = "force-dynamic";
 // Public: store name, currency, WhatsApp number, plus the size/colour option
 // pools the product form draws its toggle chips from.
 export const GET = route(async () => {
-  return ok({ settings: getPublicSettings(), variantOptions: getVariantOptions() });
+  // Shoppers get light URL-backed images (logo, payment icons); staff keep raw
+  // data-URIs so the admin settings editor can round-trip them.
+  const staff = await currentUser();
+  const settings = getPublicSettings();
+  return ok({
+    settings: staff ? settings : publicizeSettings(settings),
+    variantOptions: getVariantOptions(),
+  });
 });
 
 const schema = z.object({

@@ -1,11 +1,42 @@
 "use client";
 import { useEffect, useState } from "react";
 
-// Main image + thumbnail strip. Falls back gracefully to a single image.
-export default function ProductGallery({ images = [], imageColours = [], name, inStock = true, activeColour = "" }) {
+// Rough colour-name → CSS mapping so swatches show a real dot. Falls back to a
+// neutral chip (name only) for anything we don't recognise.
+const COLOUR_CSS = {
+  black: "#111111", white: "#ffffff", ivory: "#f8f4ea", cream: "#f3ead6",
+  grey: "#8a8a8a", gray: "#8a8a8a", charcoal: "#36393d", ash: "#b8bcc0",
+  navy: "#1f2a44", blue: "#2f5bd0", indigo: "#33406b", denim: "#3b5a7a",
+  green: "#3f7d54", olive: "#6b6b3a", beige: "#d9c8a9", stone: "#cabfa8",
+  brown: "#6b4a30", tan: "#b98d5f", red: "#c23b3b", pink: "#e0a0b4",
+  yellow: "#e6c34a", orange: "#d98032", purple: "#6d4a8c",
+};
+
+function colourCss(name) {
+  const n = String(name || "").toLowerCase();
+  for (const key of Object.keys(COLOUR_CSS)) {
+    if (n.includes(key)) return COLOUR_CSS[key];
+  }
+  return null;
+}
+
+// Main image + thumbnail strip + colour swatches. Colour selection is two-way:
+// picking a colour jumps to its photo, and clicking a tagged photo selects its
+// colour. Falls back gracefully when a product has no gallery or no colours.
+export default function ProductGallery({
+  images = [],
+  imageColours = [],
+  name,
+  inStock = true,
+  colours = [],
+  soldOutColours = [],
+  activeColour = "",
+  onColour,
+}) {
   const gallery = images.length ? images : [""];
   const [active, setActive] = useState(0);
   const dim = inStock ? "" : "opacity-70 grayscale";
+  const hasColours = colours.length > 0;
 
   // When the shopper picks a colour, jump to the first photo tagged with it.
   useEffect(() => {
@@ -14,34 +45,102 @@ export default function ProductGallery({ images = [], imageColours = [], name, i
     if (idx >= 0) setActive(idx);
   }, [activeColour, imageColours]);
 
+  // Click a photo → show it, and if it's tagged with a colour, select that colour.
+  function pickImage(i) {
+    setActive(i);
+    const tag = imageColours[i];
+    if (tag && onColour && colours.includes(tag)) onColour(tag);
+  }
+
   return (
     <div>
-      <div className="overflow-hidden rounded-3xl border border-line bg-smoke">
+      <div className="relative overflow-hidden rounded-3xl border border-line bg-smoke">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={gallery[active]}
           alt={`${name}${gallery.length > 1 ? ` — view ${active + 1}` : ""}`}
           className={`aspect-[4/5] w-full object-cover ${dim}`}
+          loading="eager"
+          fetchPriority="high"
         />
+        {hasColours && activeColour && activeColour !== "-" && (
+          <span className="absolute left-3 top-3 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-paper backdrop-blur-sm">
+            {activeColour}
+          </span>
+        )}
       </div>
 
       {gallery.length > 1 && (
         <div className="mt-3 grid grid-cols-5 gap-2 sm:gap-3">
-          {gallery.map((src, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setActive(i)}
-              aria-label={`View image ${i + 1}`}
-              aria-current={i === active}
-              className={`overflow-hidden rounded-xl border transition ${
-                i === active ? "border-ink" : "border-line hover:border-ash"
-              }`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" className={`aspect-square w-full object-cover ${dim}`} loading="lazy" />
-            </button>
-          ))}
+          {gallery.map((src, i) => {
+            const tagged = imageColours[i] && imageColours[i] === activeColour;
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => pickImage(i)}
+                aria-label={imageColours[i] ? `View ${imageColours[i]} — image ${i + 1}` : `View image ${i + 1}`}
+                aria-current={i === active}
+                className={`overflow-hidden rounded-xl border transition ${
+                  i === active
+                    ? "border-ink ring-2 ring-ink"
+                    : tagged
+                    ? "border-ash"
+                    : "border-line hover:border-ash"
+                }`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt="" className={`aspect-square w-full object-cover ${dim}`} loading="lazy" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Colour swatches — names + dots, synced with the purchase panel. */}
+      {hasColours && (
+        <div className="mt-5">
+          <div className="mb-2 flex items-baseline justify-between">
+            <p className="label mb-0">Colour</p>
+            {activeColour && activeColour !== "-" && (
+              <span className="text-xs font-medium text-ink">{activeColour}</span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {colours.map((c) => {
+              const selected = c === activeColour;
+              const soldOut = soldOutColours.includes(c);
+              const css = colourCss(c);
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => onColour && onColour(c)}
+                  aria-pressed={selected}
+                  title={soldOut ? `${c} — sold out` : c}
+                  className={`group inline-flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-xs font-medium transition ${
+                    selected
+                      ? "border-ink bg-ink text-paper"
+                      : soldOut
+                      ? "border-line text-ash line-through decoration-2"
+                      : "border-line text-ink hover:border-ink"
+                  }`}
+                >
+                  <span
+                    className={`h-5 w-5 flex-none rounded-full border ${
+                      selected ? "border-paper/40" : "border-line"
+                    } ${soldOut ? "opacity-50" : ""}`}
+                    style={
+                      css
+                        ? { backgroundColor: css }
+                        : { backgroundImage: "linear-gradient(135deg,#e5e5e5,#a3a3a3)" }
+                    }
+                  />
+                  {c}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

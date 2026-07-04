@@ -3,6 +3,7 @@ import db from "@/lib/db";
 import { route, ok } from "@/lib/api";
 import { currentUser, requireStockAccess } from "@/lib/auth";
 import { listProducts, getProduct, slugify } from "@/lib/models";
+import { publicizeProduct } from "@/lib/img";
 import { pruneVariantStock, normalizeVariantPrices, normalizeGallery } from "@/lib/variants";
 
 export const runtime = "nodejs";
@@ -15,7 +16,7 @@ const createSchema = z.object({
   price: z.coerce.number().min(0, "Price must be 0 or more."),
   compareAtPrice: z.coerce.number().min(0).default(0),
   image: z.string().default(""),
-  images: z.array(z.string()).max(8, "Up to 8 images per product.").default([]),
+  images: z.array(z.string()).max(20, "Up to 20 images per product.").default([]),
   imageColours: z.array(z.string()).default([]),
   sizes: z.array(z.string()).default([]),
   colours: z.array(z.string()).default([]),
@@ -39,7 +40,9 @@ export const GET = route(async (req) => {
     category: url.searchParams.get("category") || undefined,
     search: url.searchParams.get("q") || undefined,
   });
-  return ok({ products });
+  // Shoppers get light URL-backed images (cacheable, no base64 in the payload).
+  // Staff keep raw data-URIs so the admin editor can round-trip them.
+  return ok({ products: staff ? products : products.map(publicizeProduct) });
 });
 
 // Create a product (admin or stock_updater).

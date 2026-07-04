@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, listProducts, getSetting } from "@/lib/models";
+import { publicizeProduct } from "@/lib/img";
 import { abs, ogImage } from "@/lib/seo";
 import { variantPricing } from "@/lib/variants";
 import ProductCard from "@/app/components/ProductCard";
@@ -15,7 +16,7 @@ async function getRouteSlug(params) {
 
 export async function generateMetadata({ params }) {
   const slug = await getRouteSlug(params);
-  const p = getProduct(slug);
+  const p = publicizeProduct(getProduct(slug));
   if (!p) return { title: "Product not found" };
   const desc =
     (p.description && p.description.slice(0, 160)) ||
@@ -58,13 +59,15 @@ function productJsonLd(p, currency) {
 
 export default async function ProductPage({ params }) {
   const slug = await getRouteSlug(params);
-  const product = getProduct(slug);
-  if (!product) notFound();
+  const raw = getProduct(slug);
+  if (!raw) notFound();
+  const product = publicizeProduct(raw);
 
   const currency = getSetting("currency", "Rs.");
   const related = listProducts({ publicOnly: true })
     .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+    .slice(0, 4)
+    .map(publicizeProduct);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-10">

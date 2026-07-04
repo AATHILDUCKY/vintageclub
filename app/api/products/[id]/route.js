@@ -19,7 +19,7 @@ const updateSchema = z.object({
   price: z.coerce.number().min(0).optional(),
   compareAtPrice: z.coerce.number().min(0).optional(),
   image: z.string().optional(),
-  images: z.array(z.string()).max(8, "Up to 8 images per product.").optional(),
+  images: z.array(z.string()).max(20, "Up to 20 images per product.").optional(),
   imageColours: z.array(z.string()).optional(),
   sizes: z.array(z.string()).optional(),
   colours: z.array(z.string()).optional(),
