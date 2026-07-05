@@ -85,3 +85,38 @@ body {
     @apply inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition;
   }
 }
+
+/* ── Leaflet map — themed to the monochrome (black & white) look ── */
+.branch-map .leaflet-tile-pane {
+  filter: grayscale(1) contrast(1.03);
+}
+.branch-map .leaflet-container {
+  background: #f4f4f5;
+  font-family: var(--font-mono);
+}
+.branch-map .leaflet-bar a,
+.branch-map .leaflet-bar a:hover {
+  color: #121212;
+  border-radius: 0;
+  border-color: #121212;
+}
+.branch-map .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.85);
+  color: #6b7280;
+  font-size: 10px;
+}
+.branch-map .leaflet-control-attribution a {
+  color: #121212;
+}
+.branch-map .leaflet-popup-content-wrapper,
+.branch-map .leaflet-popup-tip {
+  border-radius: 0;
+  border: 1px solid #121212;
+  box-shadow: none;
+}
+.branch-map .branch-popup {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #121212;
+}

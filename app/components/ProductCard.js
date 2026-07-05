@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useStore, formatMoney } from "@/app/context/StoreProvider";
 import { variantPricingSummary } from "@/lib/variants";
+import KokoInstallment from "@/app/components/KokoInstallment";
 
 export default function ProductCard({ product }) {
   const { settings } = useStore();
@@ -46,6 +47,7 @@ export default function ProductCard({ product }) {
             Save {pricing.discountPercent}%
           </span>
         )}
+        <KokoInstallment price={pricing.priceMin} currency={settings.currency} className="mt-2" />
       </div>
     </Link>
   );

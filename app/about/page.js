@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getHomeContent, getPublicSettings } from "@/lib/models";
 import { publicizeHomeContent } from "@/lib/img";
 import { abs, ogImage } from "@/lib/seo";
+import BranchMap from "./BranchMap";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,18 @@ export default function AboutPage() {
     .split(/[·,|]/)
     .map((c) => c.trim())
     .filter(Boolean);
+
+  // Store branches — a JSON array in the CMS, so more can be added anytime.
+  let locations = [];
+  try {
+    const parsed = JSON.parse(content.about_locations || "[]");
+    if (Array.isArray(parsed)) locations = parsed.filter((l) => l && (l.name || l.address));
+  } catch {
+    locations = [];
+  }
+  const mappable = locations.filter(
+    (l) => Number.isFinite(Number(l.lat)) && Number.isFinite(Number(l.lng))
+  );
 
   return (
     <div className="bg-paper text-ink">
@@ -220,6 +233,60 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Store locations / branches ── */}
+      {locations.length > 0 && (
+        <section className={`${SHELL} py-10 sm:py-16`}>
+          <div className="border-t border-line pt-8">
+            <p className="font-mono text-sm uppercase tracking-[0.22em] text-ash">
+              {content.about_locations_eyebrow}
+            </p>
+            <h2 className="mt-3 max-w-3xl font-sans text-3xl font-bold uppercase leading-none tracking-tight sm:text-5xl">
+              {content.about_locations_heading}
+            </h2>
+
+            {mappable.length > 0 && (
+              <div className="mt-8">
+                <BranchMap locations={mappable} />
+              </div>
+            )}
+
+            <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {locations.map((l, i) => {
+                const maps = Number.isFinite(Number(l.lat)) && Number.isFinite(Number(l.lng))
+                  ? `https://www.google.com/maps/search/?api=1&query=${Number(l.lat)},${Number(l.lng)}`
+                  : l.address
+                  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address)}`
+                  : null;
+                return (
+                  <li key={i} className="flex flex-col border-t border-ink pt-4">
+                    {l.area && <p className="font-mono text-xs uppercase tracking-[0.18em] text-ash">{l.area}</p>}
+                    <h3 className="mt-2 font-sans text-2xl font-bold uppercase tracking-tight">{l.name}</h3>
+                    {l.address && <p className="mt-2 text-base leading-7 text-ash">{l.address}</p>}
+                    <div className="mt-3 flex items-center gap-3">
+                      {l.opened && (
+                        <span className="border border-ink px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.16em]">
+                          Since {l.opened}
+                        </span>
+                      )}
+                      {maps && (
+                        <a
+                          href={maps}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink underline underline-offset-4 hover:text-ash"
+                        >
+                          Get directions ↗
+                        </a>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </section>
+      )}
 
       {/* ── Values ── */}
       {values.length > 0 && (

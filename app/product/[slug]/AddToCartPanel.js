@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useStore, formatMoney } from "@/app/context/StoreProvider";
 import { comboKey, comboKeys, variantPricing, variantPricingSummary } from "@/lib/variants";
+import KokoInstallment from "@/app/components/KokoInstallment";
 
 export default function AddToCartPanel({ product, colour, setColour }) {
   const { addToCart, showToast, settings } = useStore();
@@ -102,6 +103,7 @@ export default function AddToCartPanel({ product, colour, setColour }) {
       <h1 className="mt-1 font-sans text-2xl font-bold uppercase leading-tight tracking-tight sm:text-3xl">{product.name}</h1>
       <div className="mt-3">
         <PriceBlock pricing={displayPricing} currency={settings.currency} />
+        <KokoInstallment price={displayPricing.priceMin} currency={settings.currency} size="lg" className="mt-2.5" />
         {selectedPriceOverride ? (
           <p className="mt-2 text-xs font-medium text-ash">Price updated for your selection.</p>
         ) : hasVariantPrices ? (

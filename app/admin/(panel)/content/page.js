@@ -159,6 +159,7 @@ const SECTION_LINKS = [
   { id: "overview", label: "Overview", hint: "Page shortcuts" },
   { id: "images", label: "Images", hint: "Hero, editorial, about" },
   { id: "trust", label: "Trust section", hint: "Heading + 4 cards" },
+  { id: "locations", label: "Locations", hint: "Branches + map" },
   ...TEXT_GROUPS.map((group) => ({
     id: slugify(group.title),
     label: group.title,
@@ -383,6 +384,18 @@ export default function ContentPage() {
             <p className="text-xs text-ash">Everything for this section is managed here in one place.</p>
           </SectionPanel>
 
+          <SectionPanel
+            id="locations"
+            title="Locations"
+            description="Store branches shown on the About page map. Add as many as you like."
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FieldControl label="Section eyebrow" value={form.about_locations_eyebrow ?? ""} onChange={(v) => set("about_locations_eyebrow", v)} />
+              <FieldControl label="Section heading" value={form.about_locations_heading ?? ""} onChange={(v) => set("about_locations_heading", v)} />
+            </div>
+            <LocationsEditor value={form.about_locations ?? "[]"} onChange={(v) => set("about_locations", v)} />
+          </SectionPanel>
+
           {TEXT_GROUPS.map((group) => (
             <SectionPanel
               key={group.title}
@@ -432,6 +445,73 @@ function SectionPanel({ id, title, description, children }) {
       </div>
       <div className="space-y-4">{children}</div>
     </section>
+  );
+}
+
+// Add / edit / remove store branches. The list is serialised to a JSON string
+// stored under `about_locations`, so new branches need no code change. lat/lng
+// place the pin on the map; leave them blank to list a branch without a pin.
+function LocationsEditor({ value, onChange }) {
+  let list = [];
+  try {
+    const parsed = JSON.parse(value || "[]");
+    if (Array.isArray(parsed)) list = parsed;
+  } catch { list = []; }
+
+  function commit(next) {
+    onChange(JSON.stringify(next));
+  }
+  function update(i, key, v) {
+    const next = list.map((row, idx) => (idx === i ? { ...row, [key]: v } : row));
+    commit(next);
+  }
+  function add() {
+    commit([...list, { name: "", area: "", address: "", opened: "", lat: "", lng: "" }]);
+  }
+  function remove(i) {
+    commit(list.filter((_, idx) => idx !== i));
+  }
+
+  return (
+    <div className="mt-2 space-y-4">
+      {list.length === 0 && (
+        <p className="border border-dashed border-line px-4 py-6 text-center text-sm text-ash">
+          No branches yet. Add your first location below.
+        </p>
+      )}
+
+      {list.map((loc, i) => (
+        <div key={i} className="border border-line p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ash">
+              Branch {String(i + 1).padStart(2, "0")}
+            </span>
+            <button type="button" onClick={() => remove(i)} className="btn-ghost px-3 py-1.5 text-xs text-red-600">
+              Remove
+            </button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FieldControl label="Branch name" value={loc.name ?? ""} onChange={(v) => update(i, "name", v)} />
+            <FieldControl label="Label (e.g. First store)" value={loc.area ?? ""} onChange={(v) => update(i, "area", v)} />
+            <div className="sm:col-span-2">
+              <FieldControl label="Address" value={loc.address ?? ""} onChange={(v) => update(i, "address", v)} />
+            </div>
+            <FieldControl label="Opened (year)" value={loc.opened ?? ""} onChange={(v) => update(i, "opened", v)} />
+            <div className="grid grid-cols-2 gap-3">
+              <FieldControl label="Latitude" value={loc.lat ?? ""} onChange={(v) => update(i, "lat", v)} />
+              <FieldControl label="Longitude" value={loc.lng ?? ""} onChange={(v) => update(i, "lng", v)} />
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <div className="flex items-center justify-between gap-3">
+        <button type="button" onClick={add} className="btn-outline px-4 py-2 text-xs">+ Add location</button>
+        <p className="text-xs text-ash">
+          Find lat/lng on Google Maps → right-click a spot → click the coordinates to copy.
+        </p>
+      </div>
+    </div>
   );
 }
 
