@@ -26,17 +26,46 @@ export function generateMetadata() {
   };
 }
 
+// Split a stored paragraph field into paragraphs on blank lines.
+function paragraphs(text) {
+  return String(text || "")
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
 export default function AboutPage() {
   const content = publicizeHomeContent(getHomeContent());
   const settings = getPublicSettings();
+
+  // Journey milestones — drop any the admin has cleared out.
+  const milestones = [1, 2, 3, 4, 5, 6]
+    .map((n) => ({
+      year: content[`about_t${n}_year`],
+      title: content[`about_t${n}_title`],
+      text: content[`about_t${n}_text`],
+    }))
+    .filter((m) => m.year || m.title || m.text);
+
+  // Stats band — drop any empty slots.
+  const stats = [1, 2, 3, 4]
+    .map((n) => ({ value: content[`about_stat${n}_value`], label: content[`about_stat${n}_label`] }))
+    .filter((s) => s.value || s.label);
+
   const values = [
     { title: content.about_value1_title, text: content.about_value1_text },
     { title: content.about_value2_title, text: content.about_value2_text },
     { title: content.about_value3_title, text: content.about_value3_text },
-  ];
+  ].filter((v) => v.title || v.text);
+
+  const countries = String(content.about_sourcing_countries || "")
+    .split(/[·,|]/)
+    .map((c) => c.trim())
+    .filter(Boolean);
 
   return (
     <div className="bg-paper text-ink">
+      {/* ── Hero ── */}
       <section className={`${SHELL} py-8 sm:py-12`}>
         <div className="border-t border-ink pt-4">
           <p className="font-mono text-sm uppercase tracking-[0.22em] text-ash">
@@ -74,9 +103,113 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* ── Founder's note ── */}
       <section className={`${SHELL} py-10 sm:py-16`}>
         <div className="grid gap-8 border-t border-line pt-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-14">
-          <div>
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={content.about_founder_image}
+              alt={content.about_founder_name || "Founder"}
+              className="aspect-[4/5] w-full object-cover grayscale sm:aspect-[16/11] lg:aspect-[4/5]"
+              loading="lazy"
+            />
+          </div>
+          <div className="flex flex-col justify-center">
+            <p className="font-mono text-sm uppercase tracking-[0.22em] text-ash">
+              {content.about_founder_eyebrow}
+            </p>
+            <h2 className="mt-3 font-sans text-3xl font-bold uppercase leading-none tracking-tight sm:text-5xl">
+              {content.about_founder_heading}
+            </h2>
+            <div className="mt-6 max-w-3xl space-y-4 text-lg leading-9 text-ash sm:text-xl">
+              {paragraphs(content.about_founder_text).map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
+            </div>
+            {(content.about_founder_name || content.about_founder_role) && (
+              <div className="mt-8 border-t border-ink pt-4">
+                {content.about_founder_name && (
+                  <p className="font-sans text-2xl font-bold uppercase tracking-tight">{content.about_founder_name}</p>
+                )}
+                {content.about_founder_role && (
+                  <p className="mt-1 font-mono text-sm uppercase tracking-[0.18em] text-ash">{content.about_founder_role}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Journey timeline ── */}
+      {milestones.length > 0 && (
+        <section className={`${SHELL} py-10 sm:py-16`}>
+          <div className="border-t border-line pt-8">
+            <p className="font-mono text-sm uppercase tracking-[0.22em] text-ash">
+              {content.about_timeline_eyebrow}
+            </p>
+            <h2 className="mt-3 max-w-3xl font-sans text-3xl font-bold uppercase leading-none tracking-tight sm:text-5xl">
+              {content.about_timeline_heading}
+            </h2>
+            <ol className="mt-10 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+              {milestones.map((m, i) => (
+                <li key={i} className="relative border-t border-ink pt-5">
+                  <span className="font-mono text-sm text-ash">{String(i + 1).padStart(2, "0")}</span>
+                  <p className="mt-2 font-sans text-3xl font-bold uppercase leading-none tracking-tight sm:text-4xl">
+                    {m.year}
+                  </p>
+                  <h3 className="mt-4 font-sans text-xl font-bold uppercase tracking-tight">{m.title}</h3>
+                  <p className="mt-2 text-base leading-7 text-ash">{m.text}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+      )}
+
+      {/* ── Stats band ── */}
+      {stats.length > 0 && (
+        <section className={`${SHELL} pb-4 pt-2 sm:pb-8`}>
+          <div className="grid grid-cols-2 gap-px overflow-hidden border border-ink bg-ink sm:grid-cols-4">
+            {stats.map((s, i) => (
+              <div key={i} className="bg-paper px-5 py-8 text-center">
+                <p className="font-sans text-4xl font-bold uppercase leading-none tracking-tight sm:text-6xl">
+                  {s.value}
+                </p>
+                <p className="mt-3 font-mono text-xs uppercase tracking-[0.18em] text-ash sm:text-sm">
+                  {s.label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Sourcing / quality ── */}
+      <section className={`${SHELL} py-10 sm:py-16`}>
+        <div className="grid gap-8 border-t border-line pt-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-14">
+          <div className="flex flex-col justify-center">
+            <p className="font-mono text-sm uppercase tracking-[0.22em] text-ash">Quality</p>
+            <h2 className="mt-3 font-sans text-3xl font-bold uppercase leading-none tracking-tight sm:text-5xl">
+              {content.about_story_heading}
+            </h2>
+            <p className="mt-6 max-w-3xl text-lg leading-9 text-ash sm:text-xl">
+              {content.about_story}
+            </p>
+            {countries.length > 0 && (
+              <div className="mt-8 flex flex-wrap gap-3">
+                {countries.map((c) => (
+                  <span
+                    key={c}
+                    className="border border-ink px-4 py-2 font-mono text-xs uppercase tracking-[0.18em]"
+                  >
+                    {c}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={content.about_second_image}
@@ -85,30 +218,25 @@ export default function AboutPage() {
               loading="lazy"
             />
           </div>
-          <div className="flex flex-col justify-between">
-            <div>
-              <p className="font-mono text-sm uppercase tracking-[0.22em] text-ash">01 — Story</p>
-              <h2 className="mt-3 font-sans text-3xl font-bold uppercase leading-none tracking-tight sm:text-5xl">
-                {content.about_story_heading}
-              </h2>
-              <p className="mt-6 max-w-3xl text-lg leading-9 text-ash sm:text-xl">
-                {content.about_story}
-              </p>
-            </div>
-
-            <div className="mt-10 grid gap-3 sm:grid-cols-3">
-              {values.map((item, i) => (
-                <div key={item.title} className="border-t border-ink pt-3">
-                  <p className="font-mono text-sm text-ash">{String(i + 2).padStart(2, "0")}</p>
-                  <h3 className="mt-3 font-sans text-2xl font-bold uppercase tracking-tight">{item.title}</h3>
-                  <p className="mt-2 text-base leading-7 text-ash">{item.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 
+      {/* ── Values ── */}
+      {values.length > 0 && (
+        <section className={`${SHELL} pb-6 pt-2 sm:pb-10`}>
+          <div className="grid gap-3 border-t border-line pt-8 sm:grid-cols-3">
+            {values.map((item, i) => (
+              <div key={i} className="border-t border-ink pt-3">
+                <p className="font-mono text-sm text-ash">{String(i + 1).padStart(2, "0")}</p>
+                <h3 className="mt-3 font-sans text-2xl font-bold uppercase tracking-tight">{item.title}</h3>
+                <p className="mt-2 text-base leading-7 text-ash">{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Closing CTA ── */}
       <section className={`${SHELL} pb-16 pt-4`}>
         <div className="border border-ink bg-ink px-6 py-12 text-center text-paper sm:py-16">
           <p className="font-mono text-sm uppercase tracking-[0.24em] text-white/50">Vintage Club</p>
