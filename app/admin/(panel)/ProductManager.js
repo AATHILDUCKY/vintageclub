@@ -41,6 +41,36 @@ function useElapsed(active) {
 
 const secs = (ms) => (ms / 1000).toFixed(1);
 
+// A single product's photos (base64 data-URIs) can total well over 1MB, and
+// many hosting setups put a reverse proxy in front of the app that rejects
+// request bodies above ~1MB — which surfaced as "network error" when saving an
+// image-heavy product. To stay safely under that limit we send the gallery in
+// size-bounded batches: the first batch rides along with the product save, and
+// any remaining batches are appended in follow-up requests. Each request keeps
+// its image payload under this budget.
+const REQUEST_IMAGE_BUDGET = 600 * 1024; // ~600KB of image data per request
+
+// Group image indices into batches whose combined data-URI length stays within
+// REQUEST_IMAGE_BUDGET. A single oversized image still gets its own batch so it
+// is never silently dropped.
+function batchImageIndices(images) {
+  const batches = [];
+  let current = [];
+  let size = 0;
+  images.forEach((src, i) => {
+    const len = (src || "").length;
+    if (current.length && size + len > REQUEST_IMAGE_BUDGET) {
+      batches.push(current);
+      current = [];
+      size = 0;
+    }
+    current.push(i);
+    size += len;
+  });
+  if (current.length) batches.push(current);
+  return batches;
+}
+
 export default function ProductManager() {
   const router = useRouter();
   const [products, setProducts] = useState([]);
@@ -410,21 +440,45 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
     });
   }
 
+  // POST/PUT JSON and parse the response, distinguishing a transport failure
+  // (fetch throws — server unreachable) from an application error (parsed body
+  // with { ok:false }). Never throws on a non-2xx; returns { res, data }.
+  async function sendJSON(url, method, body) {
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    let data = {};
+    try { data = await res.json(); } catch { /* empty / non-JSON body */ }
+    return { res, data };
+  }
+
   async function save() {
     setError("");
     if (!form.name.trim()) return setError("Name is required.");
     if (form.price === "" || Number(form.price) < 0) return setError("Enter a valid price.");
     setSaving(true);
+
     const gallery = (form.images && form.images.length ? form.images : []).filter(Boolean);
     const hasImages = gallery.length > 0;
+    const images = hasImages ? gallery : [placeholder(form.name)];
+    const colours = hasImages ? (form.imageColours || []) : [""];
+
+    // Split the gallery so no single request exceeds the safe body-size budget.
+    // The first batch saves with the product; the rest are appended after.
+    const batches = batchImageIndices(images);
+    const firstBatch = batches[0] || [];
+    const restBatches = batches.slice(1);
+
     const payload = {
       name: form.name,
       category: form.category || "All",
       price: Number(form.price),
       compareAtPrice: Number(form.compareAtPrice) || 0,
       description: form.description || "",
-      images: hasImages ? gallery : [placeholder(form.name)],
-      imageColours: hasImages ? (form.imageColours || []) : [""],
+      images: firstBatch.map((i) => images[i]),
+      imageColours: firstBatch.map((i) => colours[i] || ""),
       sizes: form.sizes || [],
       colours: form.colours || [],
       variantStock: pruneVariantStock(form.variantStock || {}, form.sizes || [], form.colours || []),
@@ -433,23 +487,38 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
       featured: !!form.featured,
       newDrop: !!form.newDrop,
     };
+
     const startedAt = performance.now();
-    let res, data;
     try {
-      res = await fetch(isNew ? "/api/products" : `/api/products/${form.id}`, {
-        method: isNew ? "POST" : "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      data = await res.json();
+      // 1) Create/update the product with its first batch of photos.
+      const { res, data } = await sendJSON(
+        isNew ? "/api/products" : `/api/products/${form.id}`,
+        isNew ? "POST" : "PUT",
+        payload,
+      );
+      if (!res.ok || !data.ok) { setSaving(false); return setError(data.error || "Save failed."); }
+      let product = data.product;
+
+      // 2) Append any remaining photos in small follow-up requests.
+      for (const batch of restBatches) {
+        const r = await sendJSON(`/api/products/${product.id}`, "PUT", {
+          appendImages: batch.map((i) => images[i]),
+          appendImageColours: batch.map((i) => colours[i] || ""),
+        });
+        if (!r.res.ok || !r.data.ok) {
+          setSaving(false);
+          return setError(r.data.error || "Some photos couldn't be saved. Open the product and re-add the remaining ones.");
+        }
+        product = r.data.product;
+      }
+
+      const took = secs(performance.now() - startedAt);
+      setSaving(false);
+      onSaved(product, isNew, took);
     } catch {
       setSaving(false);
       return setError("Network error — could not reach the server.");
     }
-    const took = secs(performance.now() - startedAt);
-    setSaving(false);
-    if (!res.ok || !data.ok) return setError(data.error || "Save failed.");
-    onSaved(data.product, isNew, took);
   }
 
   return (

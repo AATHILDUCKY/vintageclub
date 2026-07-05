@@ -21,6 +21,13 @@ const updateSchema = z.object({
   image: z.string().optional(),
   images: z.array(z.string()).max(20, "Up to 20 images per product.").optional(),
   imageColours: z.array(z.string()).optional(),
+  // Append-only image upload: a small batch of images (with aligned colour tags)
+  // added to the END of the current gallery. The admin editor uploads a product's
+  // photos in size-bounded batches so no single request grows large enough to be
+  // rejected by an upstream proxy body-size limit (the cause of the old
+  // "network error" on image-heavy products).
+  appendImages: z.array(z.string()).max(20).optional(),
+  appendImageColours: z.array(z.string()).optional(),
   sizes: z.array(z.string()).optional(),
   colours: z.array(z.string()).optional(),
   variantStock: z.record(z.boolean()).optional(),
@@ -47,6 +54,21 @@ export const PUT = route(async (req, { params }) => {
   if (!existing) return fail(404, "Product not found.");
 
   const b = updateSchema.parse(await req.json());
+  // Append-only batch: concatenate the incoming images onto the product's
+  // current gallery, then fall through to the normal `images` handling below so
+  // the primary image / colour tags stay in sync. Cap at 20 total.
+  if (b.appendImages !== undefined) {
+    const current = getProduct(id);
+    const merged = [...(current?.images || []), ...b.appendImages].slice(0, 20);
+    const mergedColours = [
+      ...(current?.imageColours || []),
+      ...(b.appendImageColours ?? b.appendImages.map(() => "")),
+    ].slice(0, 20);
+    b.images = merged;
+    b.imageColours = mergedColours;
+  }
+  delete b.appendImages;
+  delete b.appendImageColours;
   // When the gallery changes, keep the primary `image` and the per-image colour
   // tags in sync with images[0] / the surviving images.
   if (b.images !== undefined) {
