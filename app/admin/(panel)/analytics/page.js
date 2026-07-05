@@ -3,7 +3,7 @@ import {
   bestSellers,
   leadsDaily,
   salesByCategory,
-  listProducts,
+  productStats,
   getPublicSettings,
 } from "@/lib/models";
 
@@ -24,9 +24,7 @@ export default function AnalyticsPage() {
   const daily = leadsDaily(14);
   const top = bestSellers({ limit: 6 });
   const cats = salesByCategory();
-  const products = listProducts();
-  const inStock = products.filter((p) => p.inStock).length;
-  const outStock = products.length - inStock;
+  const { inStock, outStock } = productStats();
 
   const kpis = [
     { label: "Total leads", value: a.totalLeads, sub: `${a.leadsToday} today` },

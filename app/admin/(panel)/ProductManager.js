@@ -104,15 +104,28 @@ export default function ProductManager() {
   }
 
   function openNew() { setEditing({ ...EMPTY, _new: true }); }
-  function openEdit(p) {
+  // The list is lightweight (no gallery/variant data), so pull the full product
+  // — with its raw image data-URIs — only when the editor actually opens.
+  async function openEdit(p) {
+    setBusyId(p.id);
+    let full = p;
+    try {
+      const res = await fetch(`/api/products/${p.id}`, { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok && data.product) full = data.product;
+      else flash("Could not load product details.");
+    } catch {
+      flash("Could not load product details.");
+    }
+    setBusyId(null);
     setEditing({
-      ...p,
-      images: p.images && p.images.length ? p.images : p.image ? [p.image] : [],
-      imageColours: [...(p.imageColours || [])],
-      sizes: [...(p.sizes || [])],
-      colours: [...(p.colours || [])],
-      variantStock: { ...(p.variantStock || {}) },
-      variantPrices: { ...(p.variantPrices || {}) },
+      ...full,
+      images: full.images && full.images.length ? full.images : full.image ? [full.image] : [],
+      imageColours: [...(full.imageColours || [])],
+      sizes: [...(full.sizes || [])],
+      colours: [...(full.colours || [])],
+      variantStock: { ...(full.variantStock || {}) },
+      variantPrices: { ...(full.variantPrices || {}) },
     });
   }
 
@@ -208,7 +221,7 @@ export default function ProductManager() {
               </div>
 
               <div className="col-span-6 flex justify-end gap-1 sm:col-span-1">
-                <button onClick={() => openEdit(p)} className="rounded-lg p-2 hover:bg-smoke" title="Edit">
+                <button onClick={() => openEdit(p)} disabled={busyId === p.id} className="rounded-lg p-2 hover:bg-smoke disabled:opacity-40" title="Edit">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
                 </button>
                 <button onClick={() => remove(p)} className="rounded-lg p-2 text-red-500 hover:bg-red-50" title="Delete">

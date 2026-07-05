@@ -159,26 +159,23 @@ function SectionHead({ index, label, title, href }) {
 /* ─── Full-width SVG wordmark — one line on desktop, stacked (bigger) on mobile ─── */
 function Wordmark({ text }) {
   const words = text.toUpperCase().split(/\s+/).filter(Boolean);
-  const lineH = 175;
+  // Mobile: size the type so the longest word fills the width, then let shorter
+  // words fall naturally shorter. Avoids stretching each word to full width
+  // (which distorts short words like "CLUB").
+  const maxLen = Math.max(1, ...words.map((w) => w.length));
+  const mobileFontSize = Math.min(26, 148 / maxLen); // vw
   return (
     <h1 aria-label={text} className="animate-fade-up">
-      {/* Mobile: each word on its own full-width line (bigger, bolder) */}
-      <svg
-        viewBox={`0 0 1000 ${words.length * lineH}`}
-        width="100%" role="img" aria-label={text}
-        className="block w-full overflow-visible text-ink sm:hidden"
+      {/* Mobile: clean stacked wordmark — natural letterforms, no glyph stretch */}
+      <span
+        aria-hidden
+        className="block font-sans font-bold uppercase leading-[0.85] tracking-[-0.02em] text-ink sm:hidden"
+        style={{ fontSize: `${mobileFontSize.toFixed(2)}vw` }}
       >
         {words.map((w, i) => (
-          <text
-            key={w + i} x="0" y={i * lineH + lineH - 44}
-            textLength="1000" lengthAdjust="spacingAndGlyphs"
-            fill="currentColor" fontSize="150"
-            style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}
-          >
-            {w}
-          </text>
+          <span key={w + i} className="block">{w}</span>
         ))}
-      </svg>
+      </span>
       {/* Desktop: single full-width line */}
       <svg viewBox="0 0 1000 132" width="100%" role="img" aria-hidden className="hidden w-full overflow-visible text-ink sm:block">
         <text

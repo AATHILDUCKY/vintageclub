@@ -7,7 +7,7 @@
 //   /api/img/setting/:key            a settings value (logo, hero, value art…)
 //   /api/img/category/:id            a managed category tile image
 //   /api/img/payment/:id             a payment-option icon
-import { getProduct, getSetting, getPaymentOptions, listCategoryTags } from "@/lib/models";
+import { getProductImage, getSetting, getPaymentOptions, listCategoryTags } from "@/lib/models";
 import { dataUriResponse } from "@/lib/img";
 
 export const runtime = "nodejs";
@@ -19,9 +19,8 @@ export async function GET(req, { params }) {
 
   let src = "";
   if (kind === "product") {
-    const p = getProduct(key);
     const i = Math.max(0, parseInt(url.searchParams.get("i") || "0", 10) || 0);
-    src = p?.images?.[i] || p?.image || "";
+    src = getProductImage(key, i);
   } else if (kind === "setting") {
     src = getSetting(key, "");
   } else if (kind === "category") {

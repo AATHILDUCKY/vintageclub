@@ -184,9 +184,21 @@ function MobileMenu({ open, onClose, categories, count, pathname }) {
           >
             Start shopping ↗
           </Link>
-          <p className="mt-4 text-center font-mono text-[11px] leading-relaxed text-white/40">
-            No account needed — order straight to WhatsApp.
-          </p>
+          <div className="mt-4 flex items-center justify-center gap-3">
+            <p className="text-center font-mono text-[11px] leading-relaxed text-white/40">
+              No account needed — order straight to WhatsApp.
+            </p>
+            {/* Admin — small icon, deliberately placed only here in this menu. */}
+            <Link
+              href="/admin"
+              onClick={onClose}
+              aria-label="Admin dashboard"
+              title="Admin"
+              className="flex h-8 w-8 flex-none items-center justify-center rounded-full border border-white/10 text-white/35 transition hover:border-white/30 hover:text-white/80"
+            >
+              <AdminIcon />
+            </Link>
+          </div>
         </div>
       </div>
     </div>
@@ -207,6 +219,15 @@ function BagIcon() {
       <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
       <path d="M3 6h18" />
       <path d="M16 10a4 4 0 0 1-8 0" />
+    </svg>
+  );
+}
+
+function AdminIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+      <path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z" />
+      <path d="m9.5 12 1.8 1.8L14.5 10" />
     </svg>
   );
 }

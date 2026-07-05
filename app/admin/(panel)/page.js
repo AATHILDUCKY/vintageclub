@@ -1,6 +1,6 @@
 import { currentUser } from "@/lib/auth";
 import {
-  listProducts,
+  productStats,
   getPublicSettings,
   getLeadAnalytics,
   bestSellers,
@@ -28,9 +28,7 @@ function timeAgo(ts) {
 
 export default async function DashboardPage() {
   const user = await currentUser();
-  const products = listProducts(); // all products (staff view)
-  const inStock = products.filter((p) => p.inStock).length;
-  const outStock = products.length - inStock;
+  const ps = productStats(); // counts only — never reads image blobs
   const settings = getPublicSettings();
   const cur = settings.currency || "Rs.";
   const waSet = /^\d{10,15}$/.test(settings.whatsappNumber || "");
@@ -41,10 +39,10 @@ export default async function DashboardPage() {
   const maxUnits = top.reduce((m, t) => Math.max(m, t.units), 0) || 1;
 
   const stats = [
-    { label: "Total products", value: products.length },
-    { label: "In stock", value: inStock, accent: "text-emerald-600" },
-    { label: "Sold out", value: outStock, accent: "text-red-500" },
-    { label: "Featured", value: products.filter((p) => p.featured).length },
+    { label: "Total products", value: ps.total },
+    { label: "In stock", value: ps.inStock, accent: "text-emerald-600" },
+    { label: "Sold out", value: ps.outStock, accent: "text-red-500" },
+    { label: "Featured", value: ps.featured },
   ];
 
   const leadStats = [

@@ -2,8 +2,7 @@ import { z } from "zod";
 import db from "@/lib/db";
 import { route, ok } from "@/lib/api";
 import { currentUser, requireStockAccess } from "@/lib/auth";
-import { listProducts, getProduct, slugify } from "@/lib/models";
-import { publicizeProduct } from "@/lib/img";
+import { listProductCards, getProduct, slugify } from "@/lib/models";
 import { pruneVariantStock, normalizeVariantPrices, normalizeGallery } from "@/lib/variants";
 
 export const runtime = "nodejs";
@@ -32,17 +31,19 @@ const createSchema = z.object({
 });
 
 // Public list (in-stock only) unless a staff member is logged in (then all).
+// Always returns lightweight cards: only the columns a list/grid renders, with
+// image blobs served as cacheable /api/img URLs instead of shipped as base64.
+// The admin editor fetches the full product (with raw data-URIs) on demand via
+// GET /api/products/:id, so a whole-catalogue load stays tiny.
 export const GET = route(async (req) => {
   const url = new URL(req.url);
   const staff = await currentUser();
-  const products = listProducts({
+  const products = listProductCards({
     publicOnly: !staff,
     category: url.searchParams.get("category") || undefined,
     search: url.searchParams.get("q") || undefined,
   });
-  // Shoppers get light URL-backed images (cacheable, no base64 in the payload).
-  // Staff keep raw data-URIs so the admin editor can round-trip them.
-  return ok({ products: staff ? products : products.map(publicizeProduct) });
+  return ok({ products });
 });
 
 // Create a product (admin or stock_updater).
