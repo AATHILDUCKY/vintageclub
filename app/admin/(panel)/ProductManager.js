@@ -26,6 +26,21 @@ function compareAtFromDiscount(price, percent) {
   return String(Math.round(sale / (1 - pct / 100)));
 }
 
+// Live elapsed-seconds counter, running only while `active` is true. Used to
+// show how long compression / saving is taking.
+function useElapsed(active) {
+  const [ms, setMs] = useState(0);
+  useEffect(() => {
+    if (!active) { setMs(0); return; }
+    const start = performance.now();
+    const id = setInterval(() => setMs(performance.now() - start), 100);
+    return () => clearInterval(id);
+  }, [active]);
+  return ms;
+}
+
+const secs = (ms) => (ms / 1000).toFixed(1);
+
 export default function ProductManager() {
   const router = useRouter();
   const [products, setProducts] = useState([]);
@@ -239,10 +254,10 @@ export default function ProductManager() {
           categories={categories}
           variantOptions={variantOptions}
           onClose={() => setEditing(null)}
-          onSaved={(saved, isNew) => {
+          onSaved={(saved, isNew, took) => {
             setEditing(null);
             setProducts((prev) => isNew ? [saved, ...prev] : prev.map((x) => (x.id === saved.id ? saved : x)));
-            flash(isNew ? "Product added." : "Product updated.");
+            flash(`${isNew ? "Product added" : "Product updated"}${took ? ` in ${took}s` : ""}.`);
             syncServer();
           }}
         />
@@ -256,6 +271,9 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
   const [form, setForm] = useState(initial);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [imgBusy, setImgBusy] = useState(null); // { done, total } while compressing
+  const compressMs = useElapsed(!!imgBusy);
+  const saveMs = useElapsed(saving);
 
   // Build the dropdown options: the managed list, plus this product's own
   // category if it isn't in the list anymore (so editing never loses it).
@@ -344,8 +362,13 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
     const room = 20 - current.length;
     if (room <= 0) { setError("Up to 20 images per product."); return; }
     const toRead = list.slice(0, room);
+    setImgBusy({ done: 0, total: toRead.length });
     try {
-      const compressed = await compressImagesToWebP(toRead, { maxDimension: 1400, maxBytes: 64 * 1024 });
+      const compressed = await compressImagesToWebP(toRead, {
+        maxDimension: 1400,
+        maxBytes: 64 * 1024,
+        onProgress: (done, total) => setImgBusy({ done, total }),
+      });
       const reads = compressed.map((img) => img.dataUri);
       setForm((f) => ({
         ...f,
@@ -354,6 +377,8 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
       }));
     } catch (err) {
       setError(err.message || "Image compression failed.");
+    } finally {
+      setImgBusy(null);
     }
   }
 
@@ -408,15 +433,23 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
       featured: !!form.featured,
       newDrop: !!form.newDrop,
     };
-    const res = await fetch(isNew ? "/api/products" : `/api/products/${form.id}`, {
-      method: isNew ? "POST" : "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
+    const startedAt = performance.now();
+    let res, data;
+    try {
+      res = await fetch(isNew ? "/api/products" : `/api/products/${form.id}`, {
+        method: isNew ? "POST" : "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      data = await res.json();
+    } catch {
+      setSaving(false);
+      return setError("Network error — could not reach the server.");
+    }
+    const took = secs(performance.now() - startedAt);
     setSaving(false);
     if (!res.ok || !data.ok) return setError(data.error || "Save failed.");
-    onSaved(data.product, isNew);
+    onSaved(data.product, isNew, took);
   }
 
   return (
@@ -440,6 +473,21 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
         <div className="flex-1 space-y-7 overflow-y-auto px-5 py-5">
           {/* Photos */}
           <Section n="1" title="Photos" hint="Tag each photo with the colour it shows — the storefront jumps to it when a shopper picks that colour.">
+            {imgBusy && (
+              <div className="mb-3 flex items-center gap-3 rounded-xl border border-line bg-smoke/60 px-3 py-2.5 text-xs">
+                <Spinner />
+                <div className="flex-1">
+                  <p className="font-medium text-ink">Optimising photos… {imgBusy.done}/{imgBusy.total}</p>
+                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-line">
+                    <div
+                      className="h-full rounded-full bg-ink transition-all duration-200"
+                      style={{ width: `${imgBusy.total ? (imgBusy.done / imgBusy.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="font-mono tabular-nums text-ash">{secs(compressMs)}s</span>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {(form.images || []).map((src, i) => (
                 <ImageCard
@@ -454,11 +502,11 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
                 />
               ))}
               {(form.images?.length || 0) < 20 && (
-                <label className="flex aspect-[4/5] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-line text-ash transition hover:border-ink hover:bg-smoke hover:text-ink">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 5v14M5 12h14" /></svg>
-                  <span className="text-[11px] font-medium uppercase tracking-wide">Add photo</span>
-                  <span className="text-[10px] text-ash">{form.images?.length || 0}/20 · WebP under 64KB</span>
-                  <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => onImageFiles(e.target.files)} />
+                <label className={`flex aspect-[4/5] flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-line text-ash transition ${imgBusy ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:border-ink hover:bg-smoke hover:text-ink"}`}>
+                  {imgBusy ? <Spinner /> : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 5v14M5 12h14" /></svg>}
+                  <span className="text-[11px] font-medium uppercase tracking-wide">{imgBusy ? "Optimising…" : "Add photo"}</span>
+                  <span className="text-[10px] text-ash">{form.images?.length || 0}/20 · under 64KB</span>
+                  <input type="file" accept="image/*" multiple disabled={!!imgBusy} className="hidden" onChange={(e) => onImageFiles(e.target.files)} />
                 </label>
               )}
             </div>
@@ -557,8 +605,16 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
 
         {/* Footer */}
         <div className="flex gap-3 border-t border-line px-5 py-4">
-          <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
-          <button onClick={save} disabled={saving} className="btn-primary flex-[2]">{saving ? "Saving…" : isNew ? "Add product" : "Save changes"}</button>
+          <button onClick={onClose} disabled={saving} className="btn-ghost flex-1 disabled:opacity-50">Cancel</button>
+          <button onClick={save} disabled={saving || !!imgBusy} className="btn-primary flex-[2] disabled:opacity-60">
+            {saving
+              ? `Saving… ${secs(saveMs)}s`
+              : imgBusy
+              ? "Optimising photos…"
+              : isNew
+              ? "Add product"
+              : "Save changes"}
+          </button>
         </div>
       </div>
     </div>
@@ -566,6 +622,16 @@ function ProductForm({ initial, categories = [], variantOptions = { sizes: [], c
 }
 
 /* ─── Modern form building blocks ─── */
+
+// Small inline loading spinner.
+function Spinner() {
+  return (
+    <svg className="h-4 w-4 flex-none animate-spin text-ink" viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path className="opacity-90" d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 // A numbered section header + its content.
 function Section({ n, title, hint, children }) {
