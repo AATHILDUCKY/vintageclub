@@ -1,14 +1,17 @@
 import {
   getLeadAnalytics,
   bestSellers,
-  leadsDaily,
   salesByCategory,
   productStats,
   getPublicSettings,
-  getViewsAnalytics,
-  viewsDaily,
+  ACTIVITY_RANGES,
+  resolveRange,
+  rangeSince,
+  activitySeries,
+  getTotalViews,
   topViewedProducts,
 } from "@/lib/models";
+import RangeFilter from "./RangeFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -21,84 +24,150 @@ function money(n, cur) {
   return `${cur} ${Math.round(Number(n) || 0).toLocaleString()}`;
 }
 
-export default function AnalyticsPage() {
+// Map the selected range to a lookback in whole days for the lead-based rankings
+// (best sellers), which filter on a "-N days" window.
+const RANGE_DAYS = { "24h": 1, "7d": 7, "30d": 30, "12mo": 365 };
+
+export default async function AnalyticsPage({ searchParams }) {
+  const sp = (await searchParams) || {};
+  const range = resolveRange(sp.range);
+  const meta = ACTIVITY_RANGES[range];
+
   const cur = getPublicSettings().currency || "Rs.";
   const a = getLeadAnalytics();
-  const daily = leadsDaily(14);
-  const top = bestSellers({ limit: 6 });
+  const series = activitySeries(range);
+  const totalViews = getTotalViews();
+  const mostViewed = topViewedProducts({ since: rangeSince(range), limit: 6 });
+  const top = bestSellers({ limit: 6, days: RANGE_DAYS[range] });
   const cats = salesByCategory();
   const { inStock, outStock } = productStats();
-  const v = getViewsAnalytics();
-  const viewsSeries = viewsDaily(14);
-  const mostViewed = topViewedProducts({ limit: 6 });
+
+  // Everything above the fold reflects the selected range, summed from the one
+  // activity series so the KPIs and the graph can never disagree.
+  const rangeViews = series.reduce((n, d) => n + d.views, 0);
+  const rangeLeads = series.reduce((n, d) => n + d.leads, 0);
+  const rangeRevenue = series.reduce((n, d) => n + d.revenue, 0);
+  const rangeUnit = meta.label.replace(/^Last\s+/i, "");
 
   const kpis = [
-    { label: "Total product views", value: v.totalViews.toLocaleString(), sub: `${v.viewsToday.toLocaleString()} today` },
-    { label: "Total leads", value: a.totalLeads, sub: `${a.leadsToday} today` },
-    { label: "Intended revenue", value: money(a.intendedRevenue, cur), sub: `${a.unitsSold} units sold` },
-    { label: "Views · 7 days", value: v.views7d.toLocaleString(), sub: `${v.views30d.toLocaleString()} in 30 days` },
-    { label: "Leads · 7 days", value: a.leads7d, sub: money(a.revenue7d, cur) },
-    { label: "Avg. order value", value: money(a.avgOrderValue, cur), sub: "per lead" },
+    { label: `Views · ${rangeUnit}`, value: rangeViews.toLocaleString(), sub: `${totalViews.toLocaleString()} all-time` },
+    { label: `Leads · ${rangeUnit}`, value: rangeLeads.toLocaleString(), sub: `${a.totalLeads.toLocaleString()} all-time` },
+    { label: `Revenue · ${rangeUnit}`, value: money(rangeRevenue, cur), sub: money(a.avgOrderValue, cur) + " avg order" },
+    { label: "Total product views", value: totalViews.toLocaleString(), sub: `${a.unitsSold.toLocaleString()} units sold` },
   ];
 
-  const noData = a.totalLeads === 0;
+  const noViews = totalViews === 0;
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold">Analytics</h1>
-        <p className="mt-1 text-sm text-ash">WhatsApp leads, revenue intent and product performance.</p>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold">Analytics</h1>
+          <p className="mt-1 text-sm text-ash">Website activity, product views, WhatsApp leads and revenue intent.</p>
+        </div>
+        <RangeFilter value={range} />
       </div>
 
-      {/* KPI tiles */}
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
+      {/* KPI tiles — all reflect the selected range */}
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpis.map((k) => (
           <div key={k.label} className="rounded-2xl border border-line bg-white p-4">
-            <p className="text-xs uppercase tracking-wide text-ash">{k.label}</p>
+            <p className="truncate text-xs uppercase tracking-wide text-ash">{k.label}</p>
             <p className="mt-1 text-2xl font-bold">{k.value}</p>
-            <p className="mt-0.5 text-[11px] text-ash">{k.sub}</p>
+            <p className="mt-0.5 truncate text-[11px] text-ash">{k.sub}</p>
           </div>
         ))}
       </div>
 
-      {noData && (
+      {noViews && (
         <div className="mb-6 rounded-2xl border border-line bg-smoke px-4 py-3 text-sm text-ash">
-          No leads yet — charts populate automatically once customers check out to WhatsApp.
+          No product views recorded yet — this fills in automatically as customers browse your storefront.
         </div>
       )}
 
-      {/* Product views */}
-      <div className="mb-4 grid gap-4 lg:grid-cols-3">
-        <Card title="Product views — last 14 days" note="Storefront visits per day" className="lg:col-span-2">
-          <BarChart data={viewsSeries} valueKey="views" label="views" />
-        </Card>
-        <Card title="Most viewed" note="By total views" className="lg:col-span-1">
-          <HBars rows={mostViewed.map((m) => ({ label: m.name, value: m.views }))} unit="views" />
+      {/* Website activity — views (bars) + leads (line) over the range */}
+      <div className="mb-4">
+        <Card title="Website activity" note={`${meta.label} · views and leads per ${meta.unit}`}>
+          <ActivityChart data={series} />
         </Card>
       </div>
 
-      {/* Time series */}
-      <div className="mb-4 grid gap-4 lg:grid-cols-2">
-        <Card title="Leads — last 14 days" note="Completed checkouts per day">
-          <BarChart data={daily} valueKey="leads" />
+      {/* Views ranking + revenue */}
+      <div className="mb-4 grid gap-4 lg:grid-cols-3">
+        <Card title="Most viewed" note={`Top products · ${rangeUnit}`} className="lg:col-span-1">
+          <HBars rows={mostViewed.map((m) => ({ label: m.name, value: m.views }))} unit="views" />
         </Card>
-        <Card title="Revenue intent — last 14 days" note={`Order value per day (${cur})`}>
-          <AreaChart data={daily} valueKey="revenue" cur={cur} />
+        <Card title="Revenue intent" note={`Order value per ${meta.unit} (${cur})`} className="lg:col-span-2">
+          <AreaChart data={series} valueKey="revenue" cur={cur} />
         </Card>
       </div>
 
       {/* Rankings + donut */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="Best sellers" note="By units ordered" className="lg:col-span-1">
+        <Card title="Best sellers" note={`By units · ${rangeUnit}`} className="lg:col-span-1">
           <HBars rows={top.map((t) => ({ label: t.name, value: t.units, meta: money(t.revenue, cur) }))} unit="units" />
         </Card>
-        <Card title="Sales by category" note="Units per category" className="lg:col-span-1">
+        <Card title="Sales by category" note="Units per category · all-time" className="lg:col-span-1">
           <HBars rows={cats.map((c) => ({ label: c.category, value: c.units, meta: money(c.revenue, cur) }))} unit="units" />
         </Card>
         <Card title="Stock status" note="Live inventory" className="lg:col-span-1">
           <Donut inStock={inStock} outStock={outStock} />
         </Card>
       </div>
+    </div>
+  );
+}
+
+/* ── Website activity: view bars + a leads line, each on its own scale ── */
+function ActivityChart({ data }) {
+  const W = 760, H = 240, pad = { l: 34, r: 34, t: 20, b: 28 };
+  const n = data.length;
+  const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+  const vMax = Math.max(1, ...data.map((d) => d.views));
+  const lMax = Math.max(1, ...data.map((d) => d.leads));
+  const slot = cw / n;
+  const barW = Math.max(3, Math.min(26, slot - 6));
+  const vY = (v) => pad.t + ch * (1 - v / vMax);
+  const lY = (v) => pad.t + ch * (1 - v / lMax);
+  const xMid = (i) => pad.l + i * slot + slot / 2;
+  const ticks = niceTicks(vMax, 3);
+  const hasLeads = data.some((d) => d.leads > 0);
+  const linePts = data.map((d, i) => [xMid(i), lY(d.leads)]);
+  const line = linePts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
+  const labelEvery = Math.ceil(n / 8);
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-4 text-[11px] text-ash">
+        <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: INK }} /> Product views</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-block h-0.5 w-4 rounded-full" style={{ background: "#e11d48" }} /> Leads</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Website activity: product views and leads over time" className="overflow-visible">
+        {ticks.map((t) => (
+          <g key={t}>
+            <line x1={pad.l} x2={W - pad.r} y1={vY(t)} y2={vY(t)} stroke={LINE} strokeWidth="1" />
+            <text x={pad.l - 6} y={vY(t) + 3} textAnchor="end" fontSize="10" fill={ASH} fontFamily="var(--font-mono)">{shortNum(t)}</text>
+          </g>
+        ))}
+        {data.map((d, i) => {
+          const bh = ch * (d.views / vMax);
+          const x = pad.l + i * slot + (slot - barW) / 2;
+          return d.views > 0 ? (
+            <rect key={i} x={x} y={pad.t + ch - bh} width={barW} height={bh} rx="2.5" fill={INK}>
+              <title>{`${d.label}: ${d.views} views, ${d.leads} leads`}</title>
+            </rect>
+          ) : null;
+        })}
+        {hasLeads && <path d={line} fill="none" stroke="#e11d48" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />}
+        {hasLeads && data.map((d, i) => (d.leads > 0 ? <circle key={i} cx={linePts[i][0]} cy={linePts[i][1]} r="2.5" fill="#e11d48" /> : null))}
+        {hasLeads && ticks.map((t) => {
+          const lv = Math.round((t / vMax) * lMax);
+          return <text key={`r${t}`} x={W - pad.r + 6} y={vY(t) + 3} textAnchor="start" fontSize="10" fill="#e11d48" fontFamily="var(--font-mono)">{shortNum(lv)}</text>;
+        })}
+        {data.map((d, i) => (i % labelEvery === 0 ? (
+          <text key={`x${i}`} x={xMid(i)} y={H - 8} textAnchor="middle" fontSize="9" fill={ASH} fontFamily="var(--font-mono)">{d.label}</text>
+        ) : null))}
+      </svg>
     </div>
   );
 }
@@ -115,54 +184,6 @@ function Card({ title, note, children, className = "" }) {
   );
 }
 
-/* ── Vertical bar chart (time series) ── */
-function BarChart({ data, valueKey, label = "leads" }) {
-  const unit = label.replace(/s$/, "");
-  const W = 700, H = 220, pad = { l: 34, r: 10, t: 18, b: 26 };
-  const n = data.length;
-  const max = Math.max(1, ...data.map((d) => d[valueKey]));
-  const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
-  const slot = cw / n;
-  const barW = Math.max(4, slot - 6);
-  const yOf = (v) => pad.t + ch * (1 - v / max);
-  const ticks = niceTicks(max, 3);
-  const peak = data.reduce((m, d, i) => (d[valueKey] > data[m][valueKey] ? i : m), 0);
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`${label} per day for the last 14 days`} className="overflow-visible">
-      {ticks.map((t) => (
-        <g key={t}>
-          <line x1={pad.l} x2={W - pad.r} y1={yOf(t)} y2={yOf(t)} stroke={LINE} strokeWidth="1" />
-          <text x={pad.l - 6} y={yOf(t) + 3} textAnchor="end" fontSize="10" fill={ASH} fontFamily="var(--font-mono)">{t}</text>
-        </g>
-      ))}
-      {data.map((d, i) => {
-        const v = d[valueKey];
-        const bh = ch * (v / max);
-        const x = pad.l + i * slot + (slot - barW) / 2;
-        const y = pad.t + ch - bh;
-        return (
-          <g key={i}>
-            {v > 0 && (
-              <rect
-                x={x}
-                y={y}
-                width={barW}
-                height={bh}
-                rx="3"
-                fill={INK}
-                aria-label={`${d.label}: ${v} ${unit}${v !== 1 ? "s" : ""}`}
-              />
-            )}
-            {i === peak && v > 0 && <text x={x + barW / 2} y={y - 5} textAnchor="middle" fontSize="10" fontWeight="700" fill={INK}>{v}</text>}
-            {i % 3 === 0 && <text x={x + barW / 2} y={H - 8} textAnchor="middle" fontSize="9" fill={ASH} fontFamily="var(--font-mono)">{d.label}</text>}
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
 /* ── Area + line chart (revenue) ── */
 function AreaChart({ data, valueKey, cur }) {
   const W = 700, H = 220, pad = { l: 46, r: 10, t: 18, b: 26 };
@@ -175,9 +196,10 @@ function AreaChart({ data, valueKey, cur }) {
   const line = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
   const area = `${line} L${pad.l + cw} ${pad.t + ch} L${pad.l} ${pad.t + ch} Z`;
   const ticks = niceTicks(max, 3);
+  const labelEvery = Math.ceil(n / 8);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Revenue intent per day for the last 14 days" className="overflow-visible">
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Revenue intent over the selected range" className="overflow-visible">
       {ticks.map((t) => (
         <g key={t}>
           <line x1={pad.l} x2={W - pad.r} y1={yOf(t)} y2={yOf(t)} stroke={LINE} strokeWidth="1" />
@@ -197,7 +219,7 @@ function AreaChart({ data, valueKey, cur }) {
             fill="transparent"
             aria-label={`${d.label}: ${money(d[valueKey], cur)}`}
           />
-          {i % 3 === 0 && <text x={pts[i][0]} y={H - 8} textAnchor="middle" fontSize="9" fill={ASH} fontFamily="var(--font-mono)">{d.label}</text>}
+          {i % labelEvery === 0 && <text x={pts[i][0]} y={H - 8} textAnchor="middle" fontSize="9" fill={ASH} fontFamily="var(--font-mono)">{d.label}</text>}
         </g>
       ))}
     </svg>

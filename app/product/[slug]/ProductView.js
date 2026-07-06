@@ -11,18 +11,12 @@ export default function ProductView({ product }) {
   const hasColours = product.colours?.length > 0;
   const [colour, setColour] = useState(hasColours ? "" : "-");
 
-  // Count one view per product per browser session (visitor semantics), fired
-  // from the browser so prefetches/bots/metadata fetches don't inflate it.
+  // Count every visit to this product — repeat visits and refreshes by the same
+  // person all add to the total. Fired from the browser (not during server
+  // render) so prefetches / bots / metadata fetches don't inflate it.
   useEffect(() => {
     if (!product?.id) return;
-    const key = `viewed:${product.id}`;
-    try {
-      if (sessionStorage.getItem(key)) return;
-      sessionStorage.setItem(key, "1");
-    } catch { /* private mode — still record, just without dedupe */ }
-    const ctrl = new AbortController();
-    fetch(`/api/products/${product.id}/view`, { method: "POST", signal: ctrl.signal, keepalive: true }).catch(() => {});
-    return () => ctrl.abort();
+    fetch(`/api/products/${product.id}/view`, { method: "POST", keepalive: true }).catch(() => {});
   }, [product?.id]);
 
   // Colours with every size combination sold out — shown crossed-out.
