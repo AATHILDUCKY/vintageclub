@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { getHomeContent, getPublicSettings } from "@/lib/models";
 import { publicizeHomeContent } from "@/lib/img";
-import { abs, ogImage } from "@/lib/seo";
+import { abs, ogImage, resolveSiteUrl } from "@/lib/seo";
 import BranchMap from "./BranchMap";
 
 export const dynamic = "force-dynamic";
 
 const SHELL = "mx-auto w-[90%] max-w-[1600px]";
 
-export function generateMetadata() {
+export async function generateMetadata() {
   const content = publicizeHomeContent(getHomeContent());
+  const base = await resolveSiteUrl();
   const title = "About";
   const description = content.about_intro || "About Vintage Club.";
   return {
@@ -20,10 +21,10 @@ export function generateMetadata() {
       type: "website",
       title,
       description,
-      url: abs("/about"),
-      images: [{ url: ogImage(content.about_image), alt: content.about_image_alt || title }],
+      url: abs("/about", base),
+      images: [{ url: ogImage(content.about_image, base), alt: content.about_image_alt || title }],
     },
-    twitter: { card: "summary_large_image", title, description, images: [ogImage(content.about_image)] },
+    twitter: { card: "summary_large_image", title, description, images: [ogImage(content.about_image, base)] },
   };
 }
 

@@ -1,15 +1,26 @@
-import { siteUrl } from "@/lib/seo";
+import { resolveSiteUrl } from "@/lib/seo";
 
 // Auto-generated /robots.txt. Blocks private/functional routes from indexing,
-// allows the public storefront, and points crawlers at the sitemap.
-export default function robots() {
-  const base = siteUrl();
+// allows the public storefront, and points crawlers at the sitemap. Dynamic so
+// the host is resolved per-request (matches the sitemap's absolute URLs).
+export const dynamic = "force-dynamic";
+
+export default async function robots() {
+  const base = await resolveSiteUrl();
   return {
     rules: [
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/api/", "/cart", "/checkout", "/order-sent"],
+        disallow: [
+          "/admin",
+          "/admin/",
+          "/api/",
+          "/cart",
+          "/checkout",
+          "/order-sent",
+          "/*?*sort=", // avoid crawling duplicate filtered/sorted permutations
+        ],
       },
     ],
     sitemap: `${base}/sitemap.xml`,

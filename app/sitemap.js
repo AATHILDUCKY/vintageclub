@@ -1,5 +1,5 @@
 import { listProducts, categories } from "@/lib/models";
-import { siteUrl } from "@/lib/seo";
+import { resolveSiteUrl } from "@/lib/seo";
 
 // Auto-generated, auto-updated sitemap.
 // Algorithm:
@@ -16,8 +16,8 @@ function toDate(sqlTs) {
   return isNaN(d.getTime()) ? new Date() : d;
 }
 
-export default function sitemap() {
-  const base = siteUrl();
+export default async function sitemap() {
+  const base = await resolveSiteUrl();
   const products = listProducts({ publicOnly: true });
   const cats = categories();
 

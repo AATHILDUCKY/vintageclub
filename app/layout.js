@@ -4,52 +4,63 @@ import { StoreProvider } from "./context/StoreProvider";
 import Header from "./components/Header";
 import MobileNav from "./components/MobileNav";
 import Toast from "./components/Toast";
-import { siteUrl } from "@/lib/seo";
-import { getSetting } from "@/lib/models";
+import { resolveSiteUrl, ogImage } from "@/lib/seo";
+import { getSetting, getSeoSettings, keywordsList } from "@/lib/models";
 
-// Rendered per-request so admin-configured Analytics / Search Console settings
-// apply on every page (including the cart & checkout funnel) without a rebuild.
+// Rendered per-request so admin-configured SEO / Analytics / Search Console
+// settings apply on every page (including the cart & checkout funnel) without a
+// rebuild.
 export const dynamic = "force-dynamic";
 
-const SITE = siteUrl();
 const STORE = process.env.STORE_NAME || "Vintage Club";
-const DESC = "Modern vintage menswear — monochrome staples and vintage-inspired tailoring, built to last. Order in seconds on WhatsApp, no account needed.";
+const DEFAULT_TITLE = `${STORE} — Modern Vintage Menswear`;
+const DEFAULT_DESC =
+  "Modern vintage menswear — monochrome staples and vintage-inspired tailoring, built to last. Order in seconds on WhatsApp, no account needed.";
+const DEFAULT_KEYWORDS = ["menswear", "vintage clothing", "streetwear", "fashion", STORE, "monochrome fashion", "Sri Lanka menswear"];
 
-// Async so the Google Search Console verification token (set in Admin →
-// Settings) is read per-request and rendered as a <meta> tag by Next.
+// Async so the canonical URL and admin-managed SEO fields (title, description,
+// keywords, OG image, Search Console token) are read per-request.
 export async function generateMetadata() {
-  const googleSiteVerification = getSetting("google_site_verification", "");
+  const site = await resolveSiteUrl();
+  const seo = getSeoSettings();
+
+  const title = seo.metaTitle || DEFAULT_TITLE;
+  const description = seo.metaDescription || DEFAULT_DESC;
+  const keywords = seo.metaKeywords ? keywordsList() : DEFAULT_KEYWORDS;
+  const shareImage = ogImage(seo.ogImage || "/images/hero-men.jpg", site);
+
   return {
-    metadataBase: new URL(SITE),
+    metadataBase: new URL(site),
     title: {
-      default: `${STORE} — Modern Vintage Menswear`,
+      default: title,
       template: `%s — ${STORE}`,
     },
-    description: DESC,
+    description,
     applicationName: STORE,
-    keywords: ["menswear", "vintage clothing", "streetwear", "fashion", STORE, "monochrome fashion", "Sri Lanka menswear"],
+    keywords,
     authors: [{ name: STORE }],
     creator: STORE,
+    publisher: STORE,
     alternates: { canonical: "/" },
-    ...(googleSiteVerification ? { verification: { google: googleSiteVerification } } : {}),
+    ...(seo.googleSiteVerification ? { verification: { google: seo.googleSiteVerification } } : {}),
     openGraph: {
       type: "website",
       siteName: STORE,
-      title: `${STORE} — Modern Vintage Menswear`,
-      description: DESC,
-      url: SITE,
-      images: [{ url: "/images/hero-men.jpg", width: 1200, height: 1500, alt: STORE }],
+      title,
+      description,
+      url: site,
+      images: [{ url: shareImage, width: 1200, height: 1500, alt: STORE }],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${STORE} — Modern Vintage Menswear`,
-      description: DESC,
-      images: ["/images/hero-men.jpg"],
+      title,
+      description,
+      images: [shareImage],
     },
     robots: {
       index: true,
       follow: true,
-      googleBot: { index: true, follow: true, "max-image-preview": "large" },
+      googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
     },
   };
 }

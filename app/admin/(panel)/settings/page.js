@@ -129,7 +129,6 @@ export default function SettingsPage() {
       </form>
 
       <SocialLinksSection />
-      <IntegrationsSection />
       <PaymentOptionsSection />
       <OptionsSection />
       <CategoriesSection />
@@ -262,88 +261,6 @@ function SocialLinksSection() {
 
           {msg && <p className={`text-sm ${msg.type === "ok" ? "text-emerald-600" : "text-red-600"}`}>{msg.text}</p>}
           <button type="button" onClick={save} disabled={saving} className="btn-primary">{saving ? "Saving…" : "Save social links"}</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Google Analytics 4 + Google Search Console verification.
-function IntegrationsSection() {
-  const [form, setForm] = useState({ googleAnalyticsId: "", googleSiteVerification: "" });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState(null);
-
-  useEffect(() => {
-    fetch("/api/settings", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.settings) {
-          setForm({
-            googleAnalyticsId: d.settings.googleAnalyticsId || "",
-            googleSiteVerification: d.settings.googleSiteVerification || "",
-          });
-        }
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setMsg(null); }
-
-  async function save() {
-    setSaving(true);
-    setMsg(null);
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    setSaving(false);
-    if (res.ok && data.settings) {
-      setMsg({ type: "ok", text: "Integrations saved. Analytics/verification apply on the next page load." });
-    } else {
-      setMsg({ type: "error", text: data.error || "Save failed." });
-    }
-  }
-
-  return (
-    <div className="card mt-6 p-5">
-      <h2 className="text-lg font-semibold">Google integrations</h2>
-      <p className="mt-1 text-sm text-ash">Connect Google Analytics and verify the site for Search Console. Leave blank to disable.</p>
-
-      {loading ? (
-        <p className="mt-4 text-sm text-ash">Loading…</p>
-      ) : (
-        <div className="mt-4 space-y-4">
-          <div>
-            <label className="label">Google Analytics measurement ID</label>
-            <input
-              className="input"
-              value={form.googleAnalyticsId}
-              onChange={(e) => set("googleAnalyticsId", e.target.value)}
-              placeholder="G-XXXXXXXXXX"
-            />
-            <p className="mt-1.5 text-xs text-ash">
-              From Analytics → Admin → Data streams. Accepts <code className="rounded bg-smoke px-1">G-…</code> (GA4), <code className="rounded bg-smoke px-1">UA-…</code>, or <code className="rounded bg-smoke px-1">GTM-…</code>.
-            </p>
-          </div>
-          <div>
-            <label className="label">Search Console verification token</label>
-            <input
-              className="input"
-              value={form.googleSiteVerification}
-              onChange={(e) => set("googleSiteVerification", e.target.value)}
-              placeholder="e.g. Ab12Cd34…"
-            />
-            <p className="mt-1.5 text-xs text-ash">
-              In Search Console, choose the <strong>HTML tag</strong> method and paste only the <code className="rounded bg-smoke px-1">content</code> value here — it becomes a <code className="rounded bg-smoke px-1">&lt;meta name=&quot;google-site-verification&quot;&gt;</code> tag.
-            </p>
-          </div>
-
-          {msg && <p className={`text-sm ${msg.type === "ok" ? "text-emerald-600" : "text-red-600"}`}>{msg.text}</p>}
-          <button type="button" onClick={save} disabled={saving} className="btn-primary">{saving ? "Saving…" : "Save integrations"}</button>
         </div>
       )}
     </div>

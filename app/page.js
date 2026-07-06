@@ -2,19 +2,18 @@ import Link from "next/link";
 import ProductCard from "./components/ProductCard";
 import { listProducts, getSetting, getPublicSettings, bestSellers, getHomeContent, listCategoryTags } from "@/lib/models";
 import { publicizeProduct, publicizeHomeContent, publicizeCategoryTag } from "@/lib/img";
-import { siteUrl, abs } from "@/lib/seo";
+import { abs, resolveSiteUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic"; // always reflect latest stock
 
 // One shared container so every section lines up with the hero (90% width).
 const SHELL = "mx-auto w-[90%] max-w-[1600px]";
 
-function siteJsonLd(storeName) {
-  const url = siteUrl();
+function siteJsonLd(storeName, url) {
   return {
     "@context": "https://schema.org",
     "@graph": [
-      { "@type": "Organization", name: storeName, url, logo: abs("/images/hero-men.jpg") },
+      { "@type": "Organization", name: storeName, url, logo: abs("/images/hero-men.jpg", url) },
       {
         "@type": "WebSite",
         name: storeName,
@@ -29,7 +28,8 @@ function siteJsonLd(storeName) {
   };
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const site = await resolveSiteUrl();
   const settings = getPublicSettings();
   const storeName = settings.storeName || getSetting("store_name", "Vintage Club");
   const content = publicizeHomeContent(getHomeContent());
@@ -59,7 +59,7 @@ export default function HomePage() {
     <div>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd(storeName)) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd(storeName, site)) }}
       />
       <Hero storeName={storeName} categories={categoryTiles} content={content} />
       <Ticker text={content.ticker} />

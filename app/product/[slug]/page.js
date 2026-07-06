@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, listProducts, getSetting } from "@/lib/models";
 import { publicizeProduct } from "@/lib/img";
-import { abs, ogImage } from "@/lib/seo";
+import { abs, ogImage, resolveSiteUrl } from "@/lib/seo";
 import { variantPricing } from "@/lib/variants";
 import ProductCard from "@/app/components/ProductCard";
 import ProductView from "./ProductView";
@@ -18,6 +18,7 @@ export async function generateMetadata({ params }) {
   const slug = await getRouteSlug(params);
   const p = publicizeProduct(getProduct(slug));
   if (!p) return { title: "Product not found" };
+  const base = await resolveSiteUrl();
   const desc =
     (p.description && p.description.slice(0, 160)) ||
     `${p.name} — ${p.category} at ${getSetting("store_name", "Vintage Club")}.`;
@@ -29,22 +30,22 @@ export async function generateMetadata({ params }) {
       type: "website",
       title: p.name,
       description: desc,
-      url: abs(`/product/${p.slug}`),
-      images: [{ url: ogImage(p.image), alt: p.name }],
+      url: abs(`/product/${p.slug}`, base),
+      images: [{ url: ogImage(p.image, base), alt: p.name }],
     },
-    twitter: { card: "summary_large_image", title: p.name, description: desc, images: [ogImage(p.image)] },
+    twitter: { card: "summary_large_image", title: p.name, description: desc, images: [ogImage(p.image, base)] },
   };
 }
 
 // Product structured data for rich search results.
-function productJsonLd(p, currency) {
+function productJsonLd(p, currency, base) {
   const pricing = variantPricing(p);
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: p.name,
     description: p.description || p.name,
-    image: (p.images || [p.image]).map((s) => ogImage(s)),
+    image: (p.images || [p.image]).map((s) => ogImage(s, base)),
     category: p.category,
     brand: { "@type": "Brand", name: getSetting("store_name", "Vintage Club") },
     offers: {
@@ -52,7 +53,7 @@ function productJsonLd(p, currency) {
       price: pricing.price,
       priceCurrency: currency === "Rs." ? "LKR" : currency,
       availability: p.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      url: abs(`/product/${p.slug}`),
+      url: abs(`/product/${p.slug}`, base),
     },
   };
 }
@@ -64,6 +65,7 @@ export default async function ProductPage({ params }) {
   const product = publicizeProduct(raw);
 
   const currency = getSetting("currency", "Rs.");
+  const base = await resolveSiteUrl();
   const related = listProducts({ publicOnly: true })
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 4)
@@ -73,7 +75,7 @@ export default async function ProductPage({ params }) {
     <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-10">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, currency)) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, currency, base)) }}
       />
       <Link href="/shop" className="mb-4 inline-flex items-center gap-1.5 text-sm text-ash hover:text-ink">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

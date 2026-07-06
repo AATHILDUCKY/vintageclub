@@ -14,6 +14,7 @@ export default function AdminShell({ user, logo = "", children }) {
     { href: "/admin/analytics", label: "Analytics", icon: ChartIcon, show: true },
     { href: "/admin/products", label: "Products", icon: TagIcon, show: true },
     { href: "/admin/content", label: "Content", icon: LayoutIcon, show: isAdmin },
+    { href: "/admin/seo", label: "SEO", icon: SearchIcon, show: isAdmin },
     { href: "/admin/users", label: "Staff Users", icon: UsersIcon, show: isAdmin },
     { href: "/admin/settings", label: "Settings", icon: CogIcon, show: isAdmin },
     { href: "/admin/account", label: "My Account", icon: UserIcon, show: true },
@@ -191,6 +192,7 @@ const LayoutIcon = () => <svg {...svg}><rect x="3" y="3" width="18" height="18" 
 const ChartIcon = () => <svg {...svg}><path d="M3 3v18h18" /><rect x="7" y="12" width="3" height="5" /><rect x="12" y="8" width="3" height="9" /><rect x="17" y="5" width="3" height="12" /></svg>;
 const UsersIcon = () => <svg {...svg}><circle cx="9" cy="8" r="3" /><path d="M3 21v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1" /><path d="M16 4a3 3 0 0 1 0 6" /></svg>;
 const CogIcon = () => <svg {...svg}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></svg>;
+const SearchIcon = () => <svg {...svg}><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>;
 const UserIcon = () => <svg {...svg}><circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0 1 12 0v1" /></svg>;
 const MoreIcon = () => <svg {...svg}><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>;
 const ExternalIcon = () => <svg {...svg}><path d="M14 3h7v7" /><path d="M10 14 21 3" /><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" /></svg>;
