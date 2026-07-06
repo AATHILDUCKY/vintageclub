@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ProductGallery from "./ProductGallery";
 import AddToCartPanel from "./AddToCartPanel";
 import { comboKey } from "@/lib/variants";
@@ -10,6 +10,20 @@ import { comboKey } from "@/lib/variants";
 export default function ProductView({ product }) {
   const hasColours = product.colours?.length > 0;
   const [colour, setColour] = useState(hasColours ? "" : "-");
+
+  // Count one view per product per browser session (visitor semantics), fired
+  // from the browser so prefetches/bots/metadata fetches don't inflate it.
+  useEffect(() => {
+    if (!product?.id) return;
+    const key = `viewed:${product.id}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch { /* private mode — still record, just without dedupe */ }
+    const ctrl = new AbortController();
+    fetch(`/api/products/${product.id}/view`, { method: "POST", signal: ctrl.signal, keepalive: true }).catch(() => {});
+    return () => ctrl.abort();
+  }, [product?.id]);
 
   // Colours with every size combination sold out — shown crossed-out.
   const variantStock = product.variantStock || {};

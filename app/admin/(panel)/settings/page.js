@@ -128,9 +128,224 @@ export default function SettingsPage() {
         <button className="btn-primary" disabled={saving}>{saving ? "Saving…" : "Save settings"}</button>
       </form>
 
+      <SocialLinksSection />
+      <IntegrationsSection />
       <PaymentOptionsSection />
       <OptionsSection />
       <CategoriesSection />
+    </div>
+  );
+}
+
+// Platform catalogue for the social-link editor. Kept in sync with
+// SOCIAL_PLATFORMS in lib/models.js (that module is server-only, so we can't
+// import it into this client component).
+const SOCIAL_PLATFORMS = [
+  { id: "instagram", name: "Instagram", placeholder: "https://instagram.com/yourstore" },
+  { id: "facebook", name: "Facebook", placeholder: "https://facebook.com/yourstore" },
+  { id: "tiktok", name: "TikTok", placeholder: "https://tiktok.com/@yourstore" },
+  { id: "youtube", name: "YouTube", placeholder: "https://youtube.com/@yourstore" },
+  { id: "whatsapp", name: "WhatsApp", placeholder: "https://wa.me/9477… (blank uses order number)" },
+  { id: "x", name: "X (Twitter)", placeholder: "https://x.com/yourstore" },
+  { id: "linkedin", name: "LinkedIn", placeholder: "https://linkedin.com/company/yourstore" },
+  { id: "pinterest", name: "Pinterest", placeholder: "https://pinterest.com/yourstore" },
+  { id: "snapchat", name: "Snapchat", placeholder: "https://snapchat.com/add/yourstore" },
+  { id: "website", name: "Website / Other", placeholder: "https://…" },
+];
+
+// Add / remove the social media links shown in the storefront footer.
+function SocialLinksSection() {
+  const [links, setLinks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setLinks(d.settings?.socialLinks || []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  function update(id, patch) {
+    setLinks((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+    setMsg(null);
+  }
+  function addLink() {
+    setLinks((items) => [...items, { id: `social-${Date.now()}`, platform: "instagram", label: "", url: "" }]);
+    setMsg(null);
+  }
+  function removeLink(id) {
+    setLinks((items) => items.filter((item) => item.id !== id));
+    setMsg(null);
+  }
+
+  async function save() {
+    setSaving(true);
+    setMsg(null);
+    const res = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ socialLinks: links }),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (res.ok && data.settings) {
+      setLinks(data.settings.socialLinks || []);
+      setMsg({ type: "ok", text: "Social links saved." });
+    } else {
+      setMsg({ type: "error", text: data.error || "Save failed." });
+    }
+  }
+
+  return (
+    <div className="card mt-6 p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Social media links</h2>
+          <p className="mt-1 text-sm text-ash">Shown in the storefront footer. Add as many as you like — pick a platform for the icon.</p>
+        </div>
+        <button type="button" onClick={addLink} className="btn-outline whitespace-nowrap px-3 py-1.5 text-xs">Add link</button>
+      </div>
+
+      {loading ? (
+        <p className="mt-4 text-sm text-ash">Loading…</p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {links.length === 0 && (
+            <p className="border border-dashed border-line px-4 py-6 text-center text-sm text-ash">No social links yet. Add your first one.</p>
+          )}
+          {links.map((link) => {
+            const meta = SOCIAL_PLATFORMS.find((p) => p.id === link.platform) || SOCIAL_PLATFORMS[SOCIAL_PLATFORMS.length - 1];
+            return (
+              <div key={link.id} className="rounded-xl border border-line p-3">
+                <div className="grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)]">
+                  <div>
+                    <label className="label">Platform</label>
+                    <select
+                      className="input h-10 py-2"
+                      value={link.platform}
+                      onChange={(e) => update(link.id, { platform: e.target.value })}
+                    >
+                      {SOCIAL_PLATFORMS.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Link URL</label>
+                    <input
+                      className="input h-10 py-2"
+                      value={link.url}
+                      onChange={(e) => update(link.id, { url: e.target.value })}
+                      placeholder={meta.placeholder}
+                      maxLength={300}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-end gap-3">
+                  <div className="min-w-0 flex-1">
+                    <label className="label">Label (optional)</label>
+                    <input
+                      className="input h-10 py-2"
+                      value={link.label}
+                      onChange={(e) => update(link.id, { label: e.target.value })}
+                      placeholder={meta.name}
+                      maxLength={40}
+                    />
+                  </div>
+                  <button type="button" onClick={() => removeLink(link.id)} className="btn-ghost px-3 py-2 text-xs text-red-500">Remove</button>
+                </div>
+              </div>
+            );
+          })}
+
+          {msg && <p className={`text-sm ${msg.type === "ok" ? "text-emerald-600" : "text-red-600"}`}>{msg.text}</p>}
+          <button type="button" onClick={save} disabled={saving} className="btn-primary">{saving ? "Saving…" : "Save social links"}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Google Analytics 4 + Google Search Console verification.
+function IntegrationsSection() {
+  const [form, setForm] = useState({ googleAnalyticsId: "", googleSiteVerification: "" });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.settings) {
+          setForm({
+            googleAnalyticsId: d.settings.googleAnalyticsId || "",
+            googleSiteVerification: d.settings.googleSiteVerification || "",
+          });
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setMsg(null); }
+
+  async function save() {
+    setSaving(true);
+    setMsg(null);
+    const res = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (res.ok && data.settings) {
+      setMsg({ type: "ok", text: "Integrations saved. Analytics/verification apply on the next page load." });
+    } else {
+      setMsg({ type: "error", text: data.error || "Save failed." });
+    }
+  }
+
+  return (
+    <div className="card mt-6 p-5">
+      <h2 className="text-lg font-semibold">Google integrations</h2>
+      <p className="mt-1 text-sm text-ash">Connect Google Analytics and verify the site for Search Console. Leave blank to disable.</p>
+
+      {loading ? (
+        <p className="mt-4 text-sm text-ash">Loading…</p>
+      ) : (
+        <div className="mt-4 space-y-4">
+          <div>
+            <label className="label">Google Analytics measurement ID</label>
+            <input
+              className="input"
+              value={form.googleAnalyticsId}
+              onChange={(e) => set("googleAnalyticsId", e.target.value)}
+              placeholder="G-XXXXXXXXXX"
+            />
+            <p className="mt-1.5 text-xs text-ash">
+              From Analytics → Admin → Data streams. Accepts <code className="rounded bg-smoke px-1">G-…</code> (GA4), <code className="rounded bg-smoke px-1">UA-…</code>, or <code className="rounded bg-smoke px-1">GTM-…</code>.
+            </p>
+          </div>
+          <div>
+            <label className="label">Search Console verification token</label>
+            <input
+              className="input"
+              value={form.googleSiteVerification}
+              onChange={(e) => set("googleSiteVerification", e.target.value)}
+              placeholder="e.g. Ab12Cd34…"
+            />
+            <p className="mt-1.5 text-xs text-ash">
+              In Search Console, choose the <strong>HTML tag</strong> method and paste only the <code className="rounded bg-smoke px-1">content</code> value here — it becomes a <code className="rounded bg-smoke px-1">&lt;meta name=&quot;google-site-verification&quot;&gt;</code> tag.
+            </p>
+          </div>
+
+          {msg && <p className={`text-sm ${msg.type === "ok" ? "text-emerald-600" : "text-red-600"}`}>{msg.text}</p>}
+          <button type="button" onClick={save} disabled={saving} className="btn-primary">{saving ? "Saving…" : "Save integrations"}</button>
+        </div>
+      )}
     </div>
   );
 }

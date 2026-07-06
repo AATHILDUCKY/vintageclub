@@ -42,6 +42,7 @@ export const GET = route(async (req) => {
     publicOnly: !staff,
     category: url.searchParams.get("category") || undefined,
     search: url.searchParams.get("q") || undefined,
+    withViews: !!staff, // per-product view counts are admin-only
   });
   return ok({ products });
 });

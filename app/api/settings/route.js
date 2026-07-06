@@ -8,6 +8,7 @@ import {
   getVariantOptions,
   setVariantOptions,
   setPaymentOptions,
+  setSocialLinks,
 } from "@/lib/models";
 
 function normalizeWhatsAppNumber(value, defaultCountryCode = "94") {
@@ -57,7 +58,23 @@ const schema = z.object({
     icon: z.string().max(1_500_000).default(""),
     enabled: z.boolean().default(true),
   })).max(12).optional(),
+  // Footer social links (multiple). Each: platform key, display label, url.
+  socialLinks: z.array(z.object({
+    id: z.string().optional(),
+    platform: z.string().optional(),
+    label: z.string().max(40).optional(),
+    url: z.string().max(300),
+  })).max(12).optional(),
+  // Marketing / SEO integrations.
+  googleAnalyticsId: z.string().max(40).optional(),
+  googleSiteVerification: z.string().max(200).optional(),
 });
+
+// GA4 "G-…", Universal Analytics "UA-…", or Tag Manager "GTM-…". Empty clears it.
+function isValidAnalyticsId(value) {
+  const v = String(value || "").trim();
+  return v === "" || /^(G|UA|GTM)-[A-Z0-9-]+$/i.test(v);
+}
 
 // Admin only: update store settings + WhatsApp receiving number.
 export const PUT = route(async (req) => {
@@ -77,5 +94,15 @@ export const PUT = route(async (req) => {
     setVariantOptions({ sizes: b.sizeOptions, colours: b.colourOptions });
   }
   if (b.paymentOptions !== undefined) setPaymentOptions(b.paymentOptions);
+  if (b.socialLinks !== undefined) setSocialLinks(b.socialLinks);
+  if (b.googleAnalyticsId !== undefined) {
+    if (!isValidAnalyticsId(b.googleAnalyticsId)) {
+      return fail(400, "Google Analytics ID must look like G-XXXXXXXXXX, UA-XXXXXX-X, or GTM-XXXXXX (or be empty).");
+    }
+    setSetting("google_analytics_id", b.googleAnalyticsId.trim());
+  }
+  if (b.googleSiteVerification !== undefined) {
+    setSetting("google_site_verification", b.googleSiteVerification.trim());
+  }
   return ok({ settings: getPublicSettings(), variantOptions: getVariantOptions() });
 });

@@ -5,6 +5,9 @@ import {
   salesByCategory,
   productStats,
   getPublicSettings,
+  getViewsAnalytics,
+  viewsDaily,
+  topViewedProducts,
 } from "@/lib/models";
 
 export const dynamic = "force-dynamic";
@@ -25,10 +28,15 @@ export default function AnalyticsPage() {
   const top = bestSellers({ limit: 6 });
   const cats = salesByCategory();
   const { inStock, outStock } = productStats();
+  const v = getViewsAnalytics();
+  const viewsSeries = viewsDaily(14);
+  const mostViewed = topViewedProducts({ limit: 6 });
 
   const kpis = [
+    { label: "Total product views", value: v.totalViews.toLocaleString(), sub: `${v.viewsToday.toLocaleString()} today` },
     { label: "Total leads", value: a.totalLeads, sub: `${a.leadsToday} today` },
     { label: "Intended revenue", value: money(a.intendedRevenue, cur), sub: `${a.unitsSold} units sold` },
+    { label: "Views · 7 days", value: v.views7d.toLocaleString(), sub: `${v.views30d.toLocaleString()} in 30 days` },
     { label: "Leads · 7 days", value: a.leads7d, sub: money(a.revenue7d, cur) },
     { label: "Avg. order value", value: money(a.avgOrderValue, cur), sub: "per lead" },
   ];
@@ -43,7 +51,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* KPI tiles */}
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
         {kpis.map((k) => (
           <div key={k.label} className="rounded-2xl border border-line bg-white p-4">
             <p className="text-xs uppercase tracking-wide text-ash">{k.label}</p>
@@ -58,6 +66,16 @@ export default function AnalyticsPage() {
           No leads yet — charts populate automatically once customers check out to WhatsApp.
         </div>
       )}
+
+      {/* Product views */}
+      <div className="mb-4 grid gap-4 lg:grid-cols-3">
+        <Card title="Product views — last 14 days" note="Storefront visits per day" className="lg:col-span-2">
+          <BarChart data={viewsSeries} valueKey="views" label="views" />
+        </Card>
+        <Card title="Most viewed" note="By total views" className="lg:col-span-1">
+          <HBars rows={mostViewed.map((m) => ({ label: m.name, value: m.views }))} unit="views" />
+        </Card>
+      </div>
 
       {/* Time series */}
       <div className="mb-4 grid gap-4 lg:grid-cols-2">
@@ -98,7 +116,8 @@ function Card({ title, note, children, className = "" }) {
 }
 
 /* ── Vertical bar chart (time series) ── */
-function BarChart({ data, valueKey }) {
+function BarChart({ data, valueKey, label = "leads" }) {
+  const unit = label.replace(/s$/, "");
   const W = 700, H = 220, pad = { l: 34, r: 10, t: 18, b: 26 };
   const n = data.length;
   const max = Math.max(1, ...data.map((d) => d[valueKey]));
@@ -110,7 +129,7 @@ function BarChart({ data, valueKey }) {
   const peak = data.reduce((m, d, i) => (d[valueKey] > data[m][valueKey] ? i : m), 0);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Leads per day for the last 14 days" className="overflow-visible">
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`${label} per day for the last 14 days`} className="overflow-visible">
       {ticks.map((t) => (
         <g key={t}>
           <line x1={pad.l} x2={W - pad.r} y1={yOf(t)} y2={yOf(t)} stroke={LINE} strokeWidth="1" />
@@ -132,7 +151,7 @@ function BarChart({ data, valueKey }) {
                 height={bh}
                 rx="3"
                 fill={INK}
-                aria-label={`${d.label}: ${v} lead${v !== 1 ? "s" : ""}`}
+                aria-label={`${d.label}: ${v} ${unit}${v !== 1 ? "s" : ""}`}
               />
             )}
             {i === peak && v > 0 && <text x={x + barW / 2} y={y - 5} textAnchor="middle" fontSize="10" fontWeight="700" fill={INK}>{v}</text>}

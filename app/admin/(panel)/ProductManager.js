@@ -190,13 +190,14 @@ export default function ProductManager() {
       {msg && <p className="mb-3 rounded-lg bg-ink px-3 py-2 text-xs text-paper">{msg}</p>}
 
       <div className="overflow-hidden rounded-2xl border border-line bg-white">
-        {/* Table header (desktop) */}
+        {/* Table header (desktop only) */}
         <div className="hidden grid-cols-12 gap-2 border-b border-line px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-ash sm:grid">
-          <div className="col-span-5">Product</div>
+          <div className="col-span-4">Product</div>
           <div className="col-span-2">Category</div>
           <div className="col-span-2">Price</div>
+          <div className="col-span-1">Views</div>
           <div className="col-span-1">Stock</div>
-          <div className="col-span-1">New drop</div>
+          <div className="col-span-1">New</div>
           <div className="col-span-1 text-right">Actions</div>
         </div>
 
@@ -206,74 +207,15 @@ export default function ProductManager() {
           <div className="px-4 py-16 text-center text-sm text-ash">No products. Add your first one.</div>
         ) : (
           filtered.map((p) => (
-            <div key={p.id} className="grid grid-cols-12 items-center gap-2 border-b border-line px-4 py-3 last:border-0">
-              <div className="col-span-12 flex items-center gap-3 sm:col-span-5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.image} alt="" className="h-12 w-10 flex-none rounded-lg object-cover" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    {p.name}
-                    {p.featured && <span className="ml-1 rounded bg-smoke px-1.5 py-0.5 text-[10px] text-ash">★</span>}
-                    {p.newDrop && <span className="ml-1 rounded bg-ink px-1.5 py-0.5 text-[10px] uppercase text-paper">New</span>}
-                  </p>
-                  <p className="truncate text-[11px] text-ash sm:hidden">
-                    {p.category} · {CURRENCY} {Number(p.price).toLocaleString()}
-                    {Number(p.compareAtPrice) > Number(p.price) ? ` was ${CURRENCY} ${Number(p.compareAtPrice).toLocaleString()}` : ""}
-                  </p>
-                </div>
-              </div>
-              <div className="col-span-4 hidden text-sm text-ash sm:col-span-2 sm:block">{p.category}</div>
-              <div className="col-span-4 hidden text-sm sm:col-span-2 sm:block">
-                <span className="font-medium">{CURRENCY} {Number(p.price).toLocaleString()}</span>
-                {Number(p.compareAtPrice) > Number(p.price) && (
-                  <span className="ml-1 text-xs text-ash line-through">{CURRENCY} {Number(p.compareAtPrice).toLocaleString()}</span>
-                )}
-                {Object.keys(p.variantPrices || {}).length > 0 && (
-                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-ash">Variant pricing</p>
-                )}
-              </div>
-
-              <div className="col-span-6 sm:col-span-1">
-                <button
-                  onClick={() => toggleStock(p)}
-                  disabled={busyId === p.id}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${p.inStock ? "bg-emerald-500" : "bg-ash/50"}`}
-                  role="switch"
-                  aria-checked={p.inStock}
-                  title={p.inStock ? "In stock — tap to mark sold out" : "Sold out — tap to mark in stock"}
-                >
-                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${p.inStock ? "translate-x-6" : "translate-x-1"}`} />
-                </button>
-                <span className={`ml-2 text-xs ${p.inStock ? "text-emerald-600" : "text-ash"}`}>
-                  {p.inStock ? "In stock" : "Sold out"}
-                </span>
-              </div>
-
-              <div className="col-span-6 sm:col-span-1">
-                <button
-                  onClick={() => toggleNewDrop(p)}
-                  disabled={busyId === p.id}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${p.newDrop ? "bg-ink" : "bg-ash/50"}`}
-                  role="switch"
-                  aria-checked={p.newDrop}
-                  title={p.newDrop ? "New drop — tap to hide from New Drops" : "Tap to show in New Drops"}
-                >
-                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${p.newDrop ? "translate-x-6" : "translate-x-1"}`} />
-                </button>
-                <span className={`ml-2 text-xs ${p.newDrop ? "text-ink" : "text-ash"}`}>
-                  {p.newDrop ? "New" : "Off"}
-                </span>
-              </div>
-
-              <div className="col-span-6 flex justify-end gap-1 sm:col-span-1">
-                <button onClick={() => openEdit(p)} disabled={busyId === p.id} className="rounded-lg p-2 hover:bg-smoke disabled:opacity-40" title="Edit">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                </button>
-                <button onClick={() => remove(p)} className="rounded-lg p-2 text-red-500 hover:bg-red-50" title="Delete">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
-                </button>
-              </div>
-            </div>
+            <ProductRow
+              key={p.id}
+              p={p}
+              busy={busyId === p.id}
+              onToggleStock={() => toggleStock(p)}
+              onToggleNewDrop={() => toggleNewDrop(p)}
+              onEdit={() => openEdit(p)}
+              onRemove={() => remove(p)}
+            />
           ))
         )}
       </div>
@@ -295,6 +237,134 @@ export default function ProductManager() {
     </div>
   );
 }
+
+/* ─── Product listing row: a stacked card on mobile, a table row on desktop ─── */
+function ProductRow({ p, busy, onToggleStock, onToggleNewDrop, onEdit, onRemove }) {
+  const price = Number(p.price).toLocaleString();
+  const onSale = Number(p.compareAtPrice) > Number(p.price);
+  const wasPrice = Number(p.compareAtPrice).toLocaleString();
+  const views = Number(p.views) || 0;
+
+  const nameLine = (
+    <>
+      {p.name}
+      {p.featured && <span className="ml-1 rounded bg-smoke px-1.5 py-0.5 text-[10px] text-ash">★</span>}
+      {p.newDrop && <span className="ml-1 rounded bg-ink px-1.5 py-0.5 text-[10px] uppercase text-paper">New</span>}
+    </>
+  );
+
+  const actions = (
+    <>
+      <button onClick={onEdit} disabled={busy} className="rounded-lg p-2 hover:bg-smoke disabled:opacity-40" title="Edit" aria-label={`Edit ${p.name}`}>
+        <EditIcon />
+      </button>
+      <button onClick={onRemove} disabled={busy} className="rounded-lg p-2 text-red-500 hover:bg-red-50 disabled:opacity-40" title="Delete" aria-label={`Delete ${p.name}`}>
+        <TrashIcon />
+      </button>
+    </>
+  );
+
+  return (
+    <div className="border-b border-line last:border-0">
+      {/* ── Mobile: card ── */}
+      <div className="p-3 sm:hidden">
+        <div className="flex gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={p.image} alt="" className="h-20 w-16 flex-none rounded-xl object-cover" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <p className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight">{nameLine}</p>
+              <ViewsBadge views={views} />
+            </div>
+            <p className="mt-0.5 truncate text-[11px] text-ash">{p.category || "Uncategorised"}</p>
+            <p className="mt-1 text-sm">
+              <span className="font-semibold">{CURRENCY} {price}</span>
+              {onSale && <span className="ml-1.5 text-xs text-ash line-through">{CURRENCY} {wasPrice}</span>}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <MiniToggle on={p.inStock} disabled={busy} onClick={onToggleStock} onColor="bg-emerald-500"
+            label={p.inStock ? "In stock" : "Sold out"} labelClass={p.inStock ? "text-emerald-600" : "text-ash"} />
+          <MiniToggle on={p.newDrop} disabled={busy} onClick={onToggleNewDrop} onColor="bg-ink"
+            label={p.newDrop ? "New drop" : "New off"} labelClass={p.newDrop ? "text-ink" : "text-ash"} />
+          <div className="ml-auto flex gap-1">{actions}</div>
+        </div>
+      </div>
+
+      {/* ── Desktop: table row ── */}
+      <div className="hidden grid-cols-12 items-center gap-2 px-4 py-3 sm:grid">
+        <div className="col-span-4 flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={p.image} alt="" className="h-12 w-10 flex-none rounded-lg object-cover" />
+          <p className="min-w-0 truncate text-sm font-medium">{nameLine}</p>
+        </div>
+        <div className="col-span-2 truncate text-sm text-ash">{p.category}</div>
+        <div className="col-span-2 text-sm">
+          <span className="font-medium">{CURRENCY} {price}</span>
+          {onSale && <span className="ml-1 text-xs text-ash line-through">{CURRENCY} {wasPrice}</span>}
+          {Object.keys(p.variantPrices || {}).length > 0 && (
+            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-ash">Variant pricing</p>
+          )}
+        </div>
+        <div className="col-span-1"><ViewsBadge views={views} /></div>
+        <div className="col-span-1">
+          <MiniToggle on={p.inStock} disabled={busy} onClick={onToggleStock} onColor="bg-emerald-500" />
+        </div>
+        <div className="col-span-1">
+          <MiniToggle on={p.newDrop} disabled={busy} onClick={onToggleNewDrop} onColor="bg-ink" />
+        </div>
+        <div className="col-span-1 flex justify-end gap-1">{actions}</div>
+      </div>
+    </div>
+  );
+}
+
+// A compact switch with an optional inline label (label used on mobile only).
+function MiniToggle({ on, disabled, onClick, onColor, label, labelClass = "" }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      role="switch"
+      aria-checked={!!on}
+      aria-label={label || undefined}
+      className={`inline-flex items-center gap-2 rounded-full disabled:opacity-50 ${label ? "border border-line px-1 py-1 pr-2.5" : ""}`}
+    >
+      <span className={`relative inline-flex h-6 w-11 flex-none items-center rounded-full transition ${on ? onColor : "bg-ash/40"}`}>
+        <span className={`inline-block h-[18px] w-[18px] transform rounded-full bg-white shadow transition ${on ? "translate-x-[22px]" : "translate-x-[3px]"}`} />
+      </span>
+      {label && <span className={`text-xs font-medium ${labelClass}`}>{label}</span>}
+    </button>
+  );
+}
+
+// Eye icon + count. Shows how many visitors have viewed the product (admin-only).
+function ViewsBadge({ views }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-smoke px-2 py-0.5 text-xs font-medium text-ink"
+      title={`${views.toLocaleString()} product view${views === 1 ? "" : "s"}`}
+    >
+      <EyeIcon />
+      <span className="tabular-nums">{views.toLocaleString()}</span>
+    </span>
+  );
+}
+
+const EyeIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-ash">
+    <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+const EditIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+);
+const TrashIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
+);
 
 function ProductForm({ initial, categories = [], variantOptions = { sizes: [], colours: [] }, onClose, onSaved }) {
   const isNew = !!initial._new;

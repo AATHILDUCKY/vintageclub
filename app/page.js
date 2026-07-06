@@ -81,7 +81,7 @@ export default function HomePage() {
       )}
 
       <CtaBanner content={content} />
-      <Footer storeName={storeName} categories={categoryTiles} whatsappNumber={settings.whatsappNumber} content={content} />
+      <Footer storeName={storeName} categories={categoryTiles} whatsappNumber={settings.whatsappNumber} content={content} socialLinks={settings.socialLinks} />
     </div>
   );
 }
@@ -518,13 +518,23 @@ function CtaBanner({ content = {} }) {
 }
 
 /* ─── Footer — editorial brand block ─── */
-function Footer({ storeName, categories = [], whatsappNumber = "", content = {} }) {
+function Footer({ storeName, categories = [], whatsappNumber = "", content = {}, socialLinks = [] }) {
   const year = new Date().getFullYear();
   const cleanWa = String(whatsappNumber || "").replace(/\D/g, "");
   const waHref = cleanWa ? `https://wa.me/${cleanWa}` : "/checkout";
+  // Admin-managed social links first, then the WhatsApp order channel (unless the
+  // admin already added one) and a Shop shortcut. Falls back to Instagram when
+  // no links are configured yet so the footer never looks empty.
+  const configured = (socialLinks || []).map((l) => ({
+    label: l.label,
+    href: l.platform === "whatsapp" && cleanWa && !/^https?:/i.test(l.url) ? waHref : l.url,
+    icon: SOCIAL_ICONS[l.platform] || SOCIAL_ICONS.website,
+  }));
+  const base = configured.length ? configured : [{ label: "Instagram", href: "https://instagram.com", icon: IgIcon }];
+  const hasWhatsapp = (socialLinks || []).some((l) => l.platform === "whatsapp");
   const socials = [
-    { label: "Instagram", href: "https://instagram.com", icon: IgIcon },
-    { label: "WhatsApp", href: waHref, icon: WaIcon },
+    ...base,
+    ...(cleanWa && !hasWhatsapp ? [{ label: "WhatsApp", href: waHref, icon: WaIcon }] : []),
     { label: "Shop", href: "/shop", icon: GridIcon },
   ];
   const shopLinks = [
@@ -648,3 +658,25 @@ const sIco = { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke
 const IgIcon = () => <svg {...sIco}><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" /></svg>;
 const WaIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.9.9-2.8-.2-.3A8 8 0 1 1 12 20Zm4.5-5.4c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.1-.2 0-.4.1-.5l.4-.5c.1-.2.1-.3 0-.5l-.7-1.7c-.2-.5-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3-.7.7-.9 1.7-.5 2.8.5 1.4 1.9 3.4 4.3 4.5 1.6.7 2.2.7 3 .6.5-.1 1.4-.6 1.6-1.2.2-.5.2-1 .1-1.1Z" /></svg>;
 const GridIcon = () => <svg {...sIco}><rect x="4" y="4" width="7" height="7" rx="1" /><rect x="13" y="4" width="7" height="7" rx="1" /><rect x="4" y="13" width="7" height="7" rx="1" /><rect x="13" y="13" width="7" height="7" rx="1" /></svg>;
+const FbIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M14 8.5V6.8c0-.8.2-1.3 1.4-1.3H17V2.7C16.5 2.6 15.6 2.5 14.6 2.5c-2.2 0-3.7 1.3-3.7 3.8v2.2H8.5V12h2.4v8.5H14V12h2.3l.4-3.5H14Z" /></svg>;
+const TkIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.3 2 1.5 3.5 3.5 3.8v2.5c-1.3 0-2.5-.4-3.6-1v5.3c0 3.2-2.3 5.6-5.4 5.6A5.3 5.3 0 0 1 5.5 13c0-3 2.4-5.4 5.9-5.1v2.7c-.4-.1-.8-.2-1.2-.2-1.5 0-2.7 1.2-2.7 2.7s1.2 2.7 2.7 2.7 2.6-1.1 2.6-2.9V3h3.7Z" /></svg>;
+const YtIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M22 8.2a2.6 2.6 0 0 0-1.8-1.9C18.6 6 12 6 12 6s-6.6 0-8.2.4A2.6 2.6 0 0 0 2 8.2 27 27 0 0 0 1.7 12 27 27 0 0 0 2 15.8a2.6 2.6 0 0 0 1.8 1.9C5.4 18 12 18 12 18s6.6 0 8.2-.4a2.6 2.6 0 0 0 1.8-1.9c.3-1.2.3-3.8.3-3.8s0-2.6-.3-3.8ZM10 15V9l5 3-5 3Z" /></svg>;
+const XIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 3h3l-6.6 7.5L21.7 21h-5.9l-4.3-5.6L6.4 21H3.4l7-8L2.7 3h6l3.9 5.2L17.5 3Zm-1 16h1.6L7.6 4.7H5.9L16.5 19Z" /></svg>;
+const LinkedinIcon = () => <svg {...sIco}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M7 10v7M7 7v.01M11 17v-4a2 2 0 0 1 4 0v4M11 10v7" /></svg>;
+const PinIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-3.6 19.3c-.1-.8-.1-2 0-2.9l1.2-5s-.3-.6-.3-1.5c0-1.4.8-2.4 1.8-2.4.9 0 1.3.6 1.3 1.4 0 .9-.6 2.2-.9 3.4-.2 1 .5 1.8 1.5 1.8 1.8 0 3-2.3 3-5 0-2-1.4-3.6-3.9-3.6a4.5 4.5 0 0 0-4.7 4.5c0 .9.3 1.5.7 2 .2.2.2.3.1.5l-.2.9c-.1.3-.3.4-.6.2-1.2-.5-1.8-1.9-1.8-3.5 0-2.6 2.2-5.7 6.5-5.7 3.5 0 5.8 2.5 5.8 5.2 0 3.5-2 6.2-4.9 6.2-1 0-1.9-.5-2.2-1.1l-.6 2.4c-.2.8-.7 1.7-1.1 2.3A10 10 0 1 0 12 2Z" /></svg>;
+const SnapIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.6 0 4.1 1.9 4.2 4.3v1.4c0 .3.3.5.6.4l.9-.3c.5-.1 1 .5.7 1-.2.4-.9.6-1.4.8-.4.1-.6.5-.4.9.5 1.2 1.6 2.3 2.9 2.7.4.1.5.6.2.9-.5.5-1.5.6-1.8 1-.1.2 0 .5.1.7.2.4-.1.8-.5.8-.7 0-1.3.1-1.6.6-.3.5-.6 1.1-1.4 1.1-.6 0-1.2-.4-2-.4s-1.5.4-2.3.4-1.4-.4-2-.4c-.8 0-1.4.4-2 .4-.8 0-1.1-.6-1.4-1.1-.3-.5-.9-.6-1.6-.6-.4 0-.7-.4-.5-.8.1-.2.2-.5.1-.7-.3-.4-1.3-.5-1.8-1-.3-.3-.2-.8.2-.9 1.3-.4 2.4-1.5 2.9-2.7.2-.4 0-.8-.4-.9-.5-.2-1.2-.4-1.4-.8-.3-.5.2-1.1.7-1l.9.3c.3.1.6-.1.6-.4V6.3C7.9 3.9 9.4 2 12 2Z" /></svg>;
+const GlobeIcon = () => <svg {...sIco}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" /></svg>;
+
+// platform key → footer icon. `website` is the fallback for anything unmapped.
+const SOCIAL_ICONS = {
+  instagram: IgIcon,
+  facebook: FbIcon,
+  tiktok: TkIcon,
+  youtube: YtIcon,
+  whatsapp: WaIcon,
+  x: XIcon,
+  linkedin: LinkedinIcon,
+  pinterest: PinIcon,
+  snapchat: SnapIcon,
+  website: GlobeIcon,
+};
