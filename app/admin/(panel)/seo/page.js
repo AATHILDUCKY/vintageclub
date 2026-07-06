@@ -186,10 +186,13 @@ export default function SeoPage() {
               className="input"
               value={form.googleSiteVerification}
               onChange={(e) => set("googleSiteVerification", e.target.value)}
-              placeholder="e.g. Ab12Cd34…"
+              placeholder='content value, or paste the whole google-site-verification="…" tag'
             />
             <p className="mt-1.5 text-xs text-ash">
-              In Search Console pick the <strong>HTML tag</strong> method and paste only the <code className="rounded bg-smoke px-1">content</code> value — it becomes a <code className="rounded bg-smoke px-1">&lt;meta name=&quot;google-site-verification&quot;&gt;</code> tag.
+              In Search Console pick the <strong>HTML tag</strong> method. You can paste the whole
+              {" "}<code className="rounded bg-smoke px-1">&lt;meta name=&quot;google-site-verification&quot; content=&quot;…&quot;&gt;</code> tag,
+              the <code className="rounded bg-smoke px-1">google-site-verification=&quot;…&quot;</code> attribute, or just the token — we extract the value automatically.
+              Save, wait for the page to redeploy, then click <strong>Verify</strong> in Search Console.
             </p>
           </div>
           <button type="button" onClick={save} disabled={saving} className="btn-primary">{saving ? "Saving…" : "Save integrations"}</button>
